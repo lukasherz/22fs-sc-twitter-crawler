@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="JpaBuddyIdeaProjectConfig" ddlActionDbType="mysql">
+    <option name="defaultUnitInitialized" value="true" />
+    <option name="reverseEngineeringLastDbConnectionId" value="cffc9e38-877f-4a44-bb35-a1fb92472793" />
+    <option name="reLastEntityCreationPackage" value="src/main/java/de/lukasherz/twittercrawler/entities" />
+    <reUseDbSnapshotConnections>
+      <dbConnection id="cffc9e38-877f-4a44-bb35-a1fb92472793" />
+    </reUseDbSnapshotConnections>
+    <option name="newEntityIdType" value="Long" />
+    <option name="newEntityIdStrategy" />
+    <option name="reIgnoreSlowDbConnections">
+      <ignoreDs id="cffc9e38-877f-4a44-bb35-a1fb92472793" />
+    </option>
+  </component>
+</project>

@@ -28,8 +28,6 @@ dependencies {
     testCompileOnly 'org.projectlombok:lombok:1.18.24'
     testAnnotationProcessor 'org.projectlombok:lombok:1.18.24'
 
-    implementation 'org.hibernate:hibernate-core:6.0.1.Final'
-
     implementation 'hikari-cp:hikari-cp:2.14.0'
     implementation 'mysql:mysql-connector-java:8.0.29'
 

@@ -1,6 +1,5 @@
 package de.lukasherz.twittercrawler.data.database;
 
-import com.twitter.clientlib.model.Tweet;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import de.lukasherz.twittercrawler.data.entities.tweets.*;
@@ -16,7 +15,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.sql.*;
 import java.util.*;
-import java.util.logging.Level;
 
 @Log
 public class DatabaseManager {
@@ -814,7 +812,7 @@ public class DatabaseManager {
 
     public boolean existsTweetReference(long tweetId, long referencedTweetId) throws SQLException {
         try (Connection connection = getNewConnection(); PreparedStatement ps = connection.prepareStatement(
-                "SELECT id FROM tweet_references_externWHERE tweet_id = ? AND referenced_tweet_id = ?")) {
+                "SELECT id FROM tweet_references_extern WHERE tweet_id = ? AND referenced_tweet_id = ?")) {
             ps.setLong(1, tweetId);
             ps.setLong(2, referencedTweetId);
             try (ResultSet rs = ps.executeQuery()) {
@@ -829,7 +827,7 @@ public class DatabaseManager {
 
     public Optional<TweetReferenceDbEntry> getTweetReference(TweetDbEntry tweetDbEntry, TweetDbEntry referencedTweetDbEntry) throws SQLException {
         try (Connection connection = getNewConnection(); PreparedStatement ps = connection.prepareStatement(
-                "SELECT id, tweet_id, referenced_tweet_id, reference_type FROM tweet_references_externWHERE tweet_id = ? AND referenced_tweet_id = ?")) {
+                "SELECT id, tweet_id, referenced_tweet_id, reference_type FROM tweet_references_extern WHERE tweet_id = ? AND referenced_tweet_id = ?")) {
             ps.setLong(1, tweetDbEntry.getId());
             ps.setLong(2, referencedTweetDbEntry.getId());
             try (ResultSet rs = ps.executeQuery()) {
@@ -848,7 +846,7 @@ public class DatabaseManager {
     public List<TweetReferenceDbEntry> getAllTweetReferencesByTweet(long tweetId) throws SQLException {
         List<TweetReferenceDbEntry> tweetReferenceDbEntries = new ArrayList<>();
         try (Connection connection = getNewConnection(); PreparedStatement ps = connection.prepareStatement(
-                "SELECT id, tweet_id, referenced_tweet_id, reference_type FROM tweet_references_externWHERE tweet_id = ?")) {
+                "SELECT id, tweet_id, referenced_tweet_id, reference_type FROM tweet_references_extern WHERE tweet_id = ?")) {
             ps.setLong(1, tweetId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
@@ -870,7 +868,7 @@ public class DatabaseManager {
     public List<TweetReferenceDbEntry> getAllTweetReferencesByReferencedTweet(long referencedTweetId) throws SQLException {
         List<TweetReferenceDbEntry> tweetReferenceDbEntries = new ArrayList<>();
         try (Connection connection = getNewConnection(); PreparedStatement ps = connection.prepareStatement(
-                "SELECT id, tweet_id, referenced_tweet_id, reference_type FROM tweet_references_externWHERE referenced_tweet_id = ?")) {
+                "SELECT id, tweet_id, referenced_tweet_id, reference_type FROM tweet_references_extern WHERE referenced_tweet_id = ?")) {
             ps.setLong(1, referencedTweetId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {

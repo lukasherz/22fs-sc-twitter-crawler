@@ -1,9 +1,21 @@
 package de.lukasherz.twittercrawler;
 
+import com.twitter.clientlib.ApiException;
+import com.twitter.clientlib.TwitterCredentialsBearer;
+import com.twitter.clientlib.api.TwitterApi;
+import com.twitter.clientlib.model.SingleTweetLookupResponse;
+import com.twitter.clientlib.model.Tweet;
+import de.lukasherz.twittercrawler.crawler.CrawlerHandler;
+import de.lukasherz.twittercrawler.data.database.DatabaseManager;
+
+import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Set;
+
 public class TwitterCrawler {
     public static void main(String[] args) {
-
-
+        new CrawlerHandler().start();
 
 //        TwitterApi api = new TwitterApi();
 //        api.setTwitterCredentials(new TwitterCredentialsBearer("AAAAAAAAAAAAAAAAAAAAAAnqcQEAAAAAvCh8TM%2FpzS3pnvFL%2B9eraD5LJNo%3D1cAwKaKCB8hbbJAK4TtMX0YzyFv77CSiDHJYry5jrJ8V916ZFA"));

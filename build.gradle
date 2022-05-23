@@ -32,6 +32,9 @@ dependencies {
     implementation 'mysql:mysql-connector-java:8.0.29'
 
     implementation "com.twitter:twitter-api-java-sdk:1.2.0"
+
+//    implementation 'org.slf4j:slf4j-api:1.7.36'
+//    implementation 'org.slf4j:slf4j-simple:1.7.36'
 }
 
 test {

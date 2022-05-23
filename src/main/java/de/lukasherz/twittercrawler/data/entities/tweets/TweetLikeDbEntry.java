@@ -7,10 +7,9 @@ import lombok.Data;
 @Builder
 @Data
 @AllArgsConstructor
-public class TweetReference {
-    private long id;
-    private Tweet tweet;
-    private Tweet referencedTweet;
-    private String referenceType;
+public class TweetLikeDbEntry {
+    private Long id;
+    private long userId;
+    private long tweetId;
 
 }

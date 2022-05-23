@@ -7,9 +7,8 @@ import lombok.Data;
 @Builder
 @Data
 @AllArgsConstructor
-public class ContextAnnotationEntity {
-    private long id;
-    private String name;
-    private String description;
-
+public class TweetContextAnnotationDbEntry {
+    private Long id;
+    private long tweetId;
+    private long contextAnnotationId;
 }

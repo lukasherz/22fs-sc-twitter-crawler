@@ -5,7 +5,10 @@ import de.lukasherz.twittercrawler.crawler.CrawlerHandler;
 public class TwitterCrawler {
 
     public static void main(String[] args) {
-        new CrawlerHandler().startSchedulers();
+        CrawlerHandler crawlerHandler = CrawlerHandler.getInstance();
+        crawlerHandler.startSchedulers();
+        crawlerHandler.addHashtagSearchToQuery("#java", 20);
+    }
 
 //        TwitterApi api = new TwitterApi();
 //        api.setTwitterCredentials(new TwitterCredentialsBearer("AAAAAAAAAAAAAAAAAAAAAAnqcQEAAAAAvCh8TM%2FpzS3pnvFL%2B9eraD5LJNo%3D1cAwKaKCB8hbbJAK4TtMX0YzyFv77CSiDHJYry5jrJ8V916ZFA"));
@@ -52,5 +55,4 @@ public class TwitterCrawler {
 //                throw new RuntimeException(e);
 //            }
 //        }
-    }
 }

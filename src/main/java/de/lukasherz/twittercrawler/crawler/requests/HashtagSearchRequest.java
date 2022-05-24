@@ -17,15 +17,19 @@ import de.lukasherz.twittercrawler.data.entities.tweets.contextannotation.Contex
 import de.lukasherz.twittercrawler.data.entities.tweets.contextannotation.ContextAnnotationDomainDbEntry;
 import de.lukasherz.twittercrawler.data.entities.tweets.contextannotation.ContextAnnotationEntityDbEntry;
 import de.lukasherz.twittercrawler.data.entities.users.UserDbEntry;
+import java.sql.Date;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import lombok.extern.java.Log;
 import org.checkerframework.checker.index.qual.Positive;
 
+@Log
 public class HashtagSearchRequest extends Request<TweetSearchResponse> {
 
     private final RequestPriorityQueue<TweetSearchResponse> queue;
@@ -193,6 +197,7 @@ public class HashtagSearchRequest extends Request<TweetSearchResponse> {
 
     @Override
     protected TweetSearchResponse executeImpl() {
+    log.info("Executing search for query: " + getQuery());
         try {
             TweetSearchResponse tsr = queue.getNextApi().tweets().tweetsRecentSearch(
                 getQuery(),
@@ -263,7 +268,16 @@ public class HashtagSearchRequest extends Request<TweetSearchResponse> {
 
             return tsr;
         } catch (ApiException e) {
-            e.printStackTrace();
+            if (e.getResponseHeaders() != null && e.getResponseHeaders().containsKey("x-rate-limit-remaining")) {
+                CrawlerHandler.getInstance().handleRateLimit(
+                    this,
+                    Instant.ofEpochSecond(Long.parseLong(e.getResponseHeaders().get("x-rate-limit-reset").get(0)))
+                );
+                log.info("Rate limit reached (" + this.getClass().getName() + "), waiting for " + Date.from(Instant.ofEpochSecond(Long.parseLong(e.getResponseHeaders().get("x-rate-limit-reset").get(0)))));
+            } else {
+                log.severe("Could not get rate limit information from response headers. " + this.getClass().getName());
+                e.printStackTrace();
+            }
         }
 
         return null;

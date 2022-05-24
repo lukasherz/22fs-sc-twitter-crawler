@@ -7,6 +7,7 @@ import com.twitter.clientlib.model.ContextAnnotationEntityFields;
 import com.twitter.clientlib.model.QuoteTweetLookupResponse;
 import com.twitter.clientlib.model.Tweet;
 import com.twitter.clientlib.model.TweetReferencedTweets.TypeEnum;
+import de.lukasherz.twittercrawler.crawler.CrawlerHandler;
 import de.lukasherz.twittercrawler.crawler.Request;
 import de.lukasherz.twittercrawler.crawler.RequestPriorityQueue;
 import de.lukasherz.twittercrawler.data.database.DatabaseManager;
@@ -17,12 +18,16 @@ import de.lukasherz.twittercrawler.data.entities.tweets.contextannotation.Contex
 import de.lukasherz.twittercrawler.data.entities.tweets.contextannotation.ContextAnnotationDomainDbEntry;
 import de.lukasherz.twittercrawler.data.entities.tweets.contextannotation.ContextAnnotationEntityDbEntry;
 import de.lukasherz.twittercrawler.data.entities.users.UserDbEntry;
+import java.sql.Date;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import lombok.extern.java.Log;
 
+@Log
 public class QuotesLookupRequest extends Request<QuoteTweetLookupResponse> {
 
     private final RequestPriorityQueue<QuoteTweetLookupResponse> queue;
@@ -115,7 +120,16 @@ public class QuotesLookupRequest extends Request<QuoteTweetLookupResponse> {
 
             return qtlr;
         } catch (ApiException e) {
-            e.printStackTrace();
+            if (e.getResponseHeaders() != null && e.getResponseHeaders().containsKey("x-rate-limit-remaining")) {
+                CrawlerHandler.getInstance().handleRateLimit(
+                    this,
+                    Instant.ofEpochSecond(Long.parseLong(e.getResponseHeaders().get("x-rate-limit-reset").get(0)))
+                );
+                log.info("Rate limit reached (" + this.getClass().getName() + "), waiting for " + Date.from(Instant.ofEpochSecond(Long.parseLong(e.getResponseHeaders().get("x-rate-limit-reset").get(0)))));
+            } else {
+                log.severe("Could not get rate limit information from response headers. " + this.getClass().getName());
+                e.printStackTrace();
+            }
         }
 
         return null;
@@ -178,6 +192,8 @@ public class QuotesLookupRequest extends Request<QuoteTweetLookupResponse> {
 //                e.printStackTrace();
 //            }
         }
+
+        if (qtlr.getData() == null) return;
 
         try {
             dm.insertContextAnnotationDomains(qtlr.getData().stream()

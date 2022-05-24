@@ -7,6 +7,7 @@ import com.twitter.clientlib.model.MultiUserLookupResponse;
 import com.twitter.clientlib.model.QuoteTweetLookupResponse;
 import com.twitter.clientlib.model.TweetSearchResponse;
 import com.twitter.clientlib.model.UsersFollowingLookupResponse;
+import de.lukasherz.twittercrawler.crawler.Request.Priority;
 import de.lukasherz.twittercrawler.crawler.requests.FollowsLookupRequest;
 import de.lukasherz.twittercrawler.crawler.requests.HashtagSearchRequest;
 import de.lukasherz.twittercrawler.crawler.requests.LikingUsersLookupRequest;
@@ -15,6 +16,7 @@ import de.lukasherz.twittercrawler.crawler.requests.ReplyLookupRequest;
 import de.lukasherz.twittercrawler.crawler.requests.RetweetsLookupRequest;
 import de.lukasherz.twittercrawler.crawler.requests.UserLookupRequest;
 import de.lukasherz.twittercrawler.data.database.DatabaseManager;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -35,8 +37,15 @@ public class CrawlerHandler {
     private final RequestPriorityQueue<GenericMultipleUsersLookupResponse> likedTweetsQueue;
     private final RequestPriorityQueue<TweetSearchResponse> repliesTweetsQueue;
     private final RequestPriorityQueue<MultiUserLookupResponse> userLookupQueue;
+    private QueuedTimer<TweetSearchResponse> searchRecentTweetsTimer;
+    private QueuedTimer<UsersFollowingLookupResponse> followingUsersTimer;
+    private QueuedTimer<QuoteTweetLookupResponse> quotedTweetsTimer;
+    private QueuedTimer<GenericMultipleUsersLookupResponse> retweetedTweetsTimer;
+    private QueuedTimer<GenericMultipleUsersLookupResponse> likedTweetsTimer;
+    private QueuedTimer<TweetSearchResponse> repliesTweetsTimer;
+    private QueuedTimer<MultiUserLookupResponse> userLookupTimer;
 
-    public CrawlerHandler() {
+    private CrawlerHandler() {
         instance = this;
 
         Set<String> tokens = Set.of(
@@ -57,14 +66,67 @@ public class CrawlerHandler {
         likedTweetsQueue = new RequestPriorityQueue<>(apisBearer);
         repliesTweetsQueue = new RequestPriorityQueue<>(apisBearer);
         userLookupQueue = new RequestPriorityQueue<>(apisBearer);
+
+        searchRecentTweetsTimer = new QueuedTimer<>(searchRecentTweetsQueue, "searchRecentTweetsTimer");
+        followingUsersTimer = new QueuedTimer<>(followingUsersQueue, "followingUsersTimer");
+        quotedTweetsTimer = new QueuedTimer<>(quotedTweetsQueue, "quotedTweetsTimer");
+        retweetedTweetsTimer = new QueuedTimer<>(retweetedTweetsQueue, "retweetedTweetsTimer");
+        likedTweetsTimer = new QueuedTimer<>(likedTweetsQueue, "likedTweetsTimer");
+        repliesTweetsTimer = new QueuedTimer<>(repliesTweetsQueue, "repliesTweetsTimer");
+        userLookupTimer = new QueuedTimer<>(userLookupQueue, "userLookupTimer");
     }
 
     public static CrawlerHandler getInstance() {
+        if (instance == null) {
+            instance = new CrawlerHandler();
+        }
         return instance;
     }
 
     public void startSchedulers() {
-        throw new NotImplementedException("Not implemented yet");
+        searchRecentTweetsTimer.start();
+        followingUsersTimer.start();
+        quotedTweetsTimer.start();
+        retweetedTweetsTimer.start();
+        likedTweetsTimer.start();
+        repliesTweetsTimer.start();
+        userLookupTimer.start();
+    }
+
+    public void handleRateLimit(Request<?> request, Instant nextRequestAllowed) {
+        log.info("Rate limit reached for " + request.getClass().getSimpleName());
+
+        if (request instanceof FollowsLookupRequest) {
+            followingUsersQueue.setTimeForCurrentEntry(nextRequestAllowed);
+            request.setPriority(Priority.HIGH);
+            followingUsersQueue.offer((Request<UsersFollowingLookupResponse>) request);
+        } else if (request instanceof HashtagSearchRequest) {
+            searchRecentTweetsQueue.setTimeForCurrentEntry(nextRequestAllowed);
+            request.setPriority(Priority.HIGH);
+            searchRecentTweetsQueue.offer((Request<TweetSearchResponse>) request);
+        } else if (request instanceof QuotesLookupRequest) {
+            quotedTweetsQueue.setTimeForCurrentEntry(nextRequestAllowed);
+            request.setPriority(Priority.HIGH);
+            quotedTweetsQueue.offer((Request<QuoteTweetLookupResponse>) request);
+        } else if (request instanceof RetweetsLookupRequest) {
+            retweetedTweetsQueue.setTimeForCurrentEntry(nextRequestAllowed);
+            request.setPriority(Priority.HIGH);
+            retweetedTweetsQueue.offer((Request<GenericMultipleUsersLookupResponse>) request);
+        } else if (request instanceof LikingUsersLookupRequest) {
+            likedTweetsQueue.setTimeForCurrentEntry(nextRequestAllowed);
+            request.setPriority(Priority.HIGH);
+            likedTweetsQueue.offer((Request<GenericMultipleUsersLookupResponse>) request);
+        } else if (request instanceof ReplyLookupRequest) {
+            repliesTweetsQueue.setTimeForCurrentEntry(nextRequestAllowed);
+            request.setPriority(Priority.HIGH);
+            repliesTweetsQueue.offer((Request<TweetSearchResponse>) request);
+        } else if (request instanceof UserLookupRequest) {
+            userLookupQueue.setTimeForCurrentEntry(nextRequestAllowed);
+            request.setPriority(Priority.HIGH);
+            userLookupQueue.offer((Request<MultiUserLookupResponse>) request);
+        } else {
+            throw new NotImplementedException("Not implemented yet");
+        }
     }
 
     public void addHashtagSearchToQuery(String hashtag, int count) {

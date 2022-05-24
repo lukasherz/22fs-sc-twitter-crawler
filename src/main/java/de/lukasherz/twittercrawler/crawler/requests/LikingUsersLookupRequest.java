@@ -8,9 +8,13 @@ import de.lukasherz.twittercrawler.crawler.Request;
 import de.lukasherz.twittercrawler.crawler.RequestPriorityQueue;
 import de.lukasherz.twittercrawler.data.database.DatabaseManager;
 import de.lukasherz.twittercrawler.data.entities.tweets.TweetLikeDbEntry;
+import java.sql.Date;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.stream.Collectors;
+import lombok.extern.java.Log;
 
+@Log
 public class LikingUsersLookupRequest extends Request<GenericMultipleUsersLookupResponse> {
 
     private final RequestPriorityQueue<GenericMultipleUsersLookupResponse> queue;
@@ -55,7 +59,16 @@ public class LikingUsersLookupRequest extends Request<GenericMultipleUsersLookup
 
             return gmulr;
         } catch (ApiException e) {
-            e.printStackTrace();
+            if (e.getResponseHeaders() != null && e.getResponseHeaders().containsKey("x-rate-limit-remaining")) {
+                CrawlerHandler.getInstance().handleRateLimit(
+                    this,
+                    Instant.ofEpochSecond(Long.parseLong(e.getResponseHeaders().get("x-rate-limit-reset").get(0)))
+                );
+                log.info("Rate limit reached (" + this.getClass().getName() + "), waiting for " + Date.from(Instant.ofEpochSecond(Long.parseLong(e.getResponseHeaders().get("x-rate-limit-reset").get(0)))));
+            } else {
+                log.severe("Could not get rate limit information from response headers. " + this.getClass().getName());
+                e.printStackTrace();
+            }
         }
 
         return null;

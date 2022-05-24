@@ -63,6 +63,10 @@ public class RequestPriorityQueue<T> {
         nextApi.add(Map.entry(api, time));
     }
 
+    public void setTimeForCurrentEntry(@NotNull Instant time) {
+        setTimeForApi(getNextApi(), time);
+    }
+
     public void resetTimeForApis() {
         nextApi.forEach(e -> e.setValue(Instant.now()));
     }

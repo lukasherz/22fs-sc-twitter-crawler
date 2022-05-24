@@ -2,14 +2,34 @@ package de.lukasherz.twittercrawler.crawler;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 @Data
 @AllArgsConstructor
 public abstract class Request<T> {
+
     private final Priority priority = Priority.NORMAL;
 
-    public abstract T execute();
+    protected abstract T executeImpl();
+
+    public T execute() {
+        T result = executeImpl();
+        runAfterExecutionImpl(result);
+        return result;
+    }
+
+    protected T executeAndProcessImpl() {
+        return execute();
+    }
+
+    public T executeAndProcess() {
+        T result = executeAndProcessImpl();
+        runAfterExecutionImpl(result);
+        return result;
+    }
+
+    protected void runAfterExecutionImpl(T result) {
+
+    }
 
     enum Priority {
         HIGHEST(2),

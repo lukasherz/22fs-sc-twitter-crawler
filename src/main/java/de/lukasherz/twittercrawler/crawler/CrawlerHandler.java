@@ -1,266 +1,106 @@
 package de.lukasherz.twittercrawler.crawler;
 
-import com.twitter.clientlib.ApiException;
 import com.twitter.clientlib.TwitterCredentialsBearer;
 import com.twitter.clientlib.api.TwitterApi;
-import com.twitter.clientlib.model.*;
+import com.twitter.clientlib.model.GenericMultipleUsersLookupResponse;
+import com.twitter.clientlib.model.QuoteTweetLookupResponse;
+import com.twitter.clientlib.model.TweetSearchResponse;
+import com.twitter.clientlib.model.UsersFollowingLookupResponse;
+import de.lukasherz.twittercrawler.crawler.requests.FollowsLookupRequest;
+import de.lukasherz.twittercrawler.crawler.requests.HashtagSearchRequest;
+import de.lukasherz.twittercrawler.crawler.requests.LikingUsersLookupRequest;
+import de.lukasherz.twittercrawler.crawler.requests.QuotesLookupRequest;
+import de.lukasherz.twittercrawler.crawler.requests.ReplyLookupRequest;
+import de.lukasherz.twittercrawler.crawler.requests.RetweetsLookupRequest;
 import de.lukasherz.twittercrawler.data.database.DatabaseManager;
-import de.lukasherz.twittercrawler.data.entities.tweets.TweetDbEntry;
-import de.lukasherz.twittercrawler.data.entities.tweets.TweetReferenceDbEntry;
-import de.lukasherz.twittercrawler.data.entities.tweets.contextannotation.ContextAnnotationDbEntry;
-import de.lukasherz.twittercrawler.data.entities.tweets.contextannotation.ContextAnnotationDomainDbEntry;
-import de.lukasherz.twittercrawler.data.entities.tweets.contextannotation.ContextAnnotationEntityDbEntry;
-import de.lukasherz.twittercrawler.data.entities.users.UserDbEntry;
-import lombok.extern.java.Log;
-import org.checkerframework.checker.index.qual.Positive;
-
-import java.sql.SQLException;
-import java.time.OffsetDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
-import java.util.Objects;
 import java.util.Set;
-import java.util.stream.Collectors;
+import lombok.extern.java.Log;
+import org.apache.commons.lang3.NotImplementedException;
 
 @Log
 public class CrawlerHandler {
+
+    private static CrawlerHandler instance;
     private final DatabaseManager dm = DatabaseManager.getInstance();
-    private final HashSet<TwitterApi> apis;
+    private final HashSet<TwitterApi> apisBearer;
     private final RequestPriorityQueue<TweetSearchResponse> searchRecentTweetsQueue;
+    private final RequestPriorityQueue<UsersFollowingLookupResponse> followingUsersQueue;
+    private final RequestPriorityQueue<QuoteTweetLookupResponse> quotedTweetsQueue;
+    private final RequestPriorityQueue<GenericMultipleUsersLookupResponse> retweetedTweetsQueue;
+    private final RequestPriorityQueue<GenericMultipleUsersLookupResponse> likedTweetsQueue;
+    private final RequestPriorityQueue<TweetSearchResponse> repliesTweetsQueue;
 
     public CrawlerHandler() {
+        instance = this;
+
         Set<String> tokens = Set.of(
-                "AAAAAAAAAAAAAAAAAAAAAAnqcQEAAAAAvCh8TM%2FpzS3pnvFL%2B9eraD5LJNo%3D1cAwKaKCB8hbbJAK4TtMX0YzyFv77CSiDHJYry5jrJ8V916ZFA"
+            "AAAAAAAAAAAAAAAAAAAAAAnqcQEAAAAAvCh8TM%2FpzS3pnvFL%2B9eraD5LJNo%3D1cAwKaKCB8hbbJAK4TtMX0YzyFv77CSiDHJYry5jrJ8V916ZFA"
         );
 
-        apis = new HashSet<>();
+        apisBearer = new HashSet<>();
         for (String token : tokens) {
             TwitterApi api = new TwitterApi();
             api.setTwitterCredentials(new TwitterCredentialsBearer(token));
-            apis.add(api);
+            apisBearer.add(api);
         }
 
-        searchRecentTweetsQueue = new RequestPriorityQueue<>(apis);
+        searchRecentTweetsQueue = new RequestPriorityQueue<>(apisBearer);
+        followingUsersQueue = new RequestPriorityQueue<>(apisBearer);
+        quotedTweetsQueue = new RequestPriorityQueue<>(apisBearer);
+        retweetedTweetsQueue = new RequestPriorityQueue<>(apisBearer);
+        likedTweetsQueue = new RequestPriorityQueue<>(apisBearer);
+        repliesTweetsQueue = new RequestPriorityQueue<>(apisBearer);
     }
 
-    public void start() {
-        search("#trump -is:retweet -is:reply -is:quote lang:en", 100);
+    public static CrawlerHandler getInstance() {
+        return instance;
     }
 
+    public void startSchedulers() {
+        throw new NotImplementedException("Not implemented yet");
+    }
 
-    public void search(String query, @Positive int count) {
-        Request<TweetSearchResponse> search = new Request<>() {
-            @Override
-            public TweetSearchResponse execute() {
-                try {
-                    return searchRecentTweetsQueue.getNextApi().tweets().tweetsRecentSearch(
-                            query,
-                            null,
-                            OffsetDateTime.now().minus(1, ChronoUnit.DAYS),
-                            null,
-                            null,
-                            count,
-                            "relevancy",
-                            null,
-                            null,
-                            Set.of(
-                                    "author_id",
-                                    "entities.mentions.username",
-                                    "in_reply_to_user_id",
-                                    "referenced_tweets.id",
-                                    "referenced_tweets.id.author_id",
-                                    "geo.place_id"
-                            ),
-                            Set.of(
-                                    "id",
-                                    "created_at",
-                                    "text",
-                                    "author_id",
-                                    "in_reply_to_user_id",
-                                    "referenced_tweets",
-                                    "geo",
-                                    "public_metrics",
-                                    "lang",
-                                    "context_annotations"
-                            ),
-                            Set.of(
-                                    "id",
-                                    "created_at",
-                                    "name",
-                                    "username",
-                                    "verified",
-                                    "profile_image_url",
-                                    "location",
-                                    "url",
-                                    "description"
-                            ),
-                            Set.of(
-                                    "media_key",
-                                    "type",
-                                    "url"
-                            ),
-                            Set.of(
-                                    "id",
-                                    "name",
-                                    "country_code",
-                                    "full_name",
-                                    "country",
-                                    "geo"
-                            ),
-                            null
-                    );
-                } catch (ApiException e) {
-                    e.printStackTrace();
-                }
+    public void addHashtagSearchToQuery(String hashtag, int count) {
+        searchRecentTweetsQueue.offer(new HashtagSearchRequest(searchRecentTweetsQueue, hashtag, count));
+    }
 
-                return null;
-            }
-        };
+    public void addFollowsLookupToQuery(long userId) {
+        //TODO: check if already computed
+        followingUsersQueue.offer(new FollowsLookupRequest(followingUsersQueue, userId, 1000));
+    }
 
-        TweetSearchResponse tsr = search.execute();
-        if (tsr != null) {
-            int i = 0;
+    public void addQuotesLookupToQuery(long tweetId, int count) {
+        quotedTweetsQueue.offer(new QuotesLookupRequest(quotedTweetsQueue, tweetId, count));
+    }
 
-            if (tsr.getIncludes().getUsers() != null) {
-                try {
-                    dm.insertUsers(tsr.getIncludes().getUsers().stream().map(UserDbEntry::parse).toList());
-                } catch (SQLException e) {
-                    e.printStackTrace();
-                }
-            }
+    public void addRetweetsLookupToQuery(long tweetId, int count) {
+        retweetedTweetsQueue.offer(new RetweetsLookupRequest(retweetedTweetsQueue, tweetId, count));
+    }
 
-            if (tsr.getData() != null) {
-                try {
-                    dm.insertTweets(tsr.getData().stream().map(m -> TweetDbEntry.parse(m, query)).toList());
-                } catch (SQLException e) {
-                    e.printStackTrace();
-                }
-            }
+    public void addLikingUsersLookupToQuery(long tweetId, int count) {
+        likedTweetsQueue.offer(new LikingUsersLookupRequest(likedTweetsQueue, tweetId, count));
+    }
 
-            try {
-                dm.insertContextAnnotationDomains(tsr.getData().stream()
-                        .map(Tweet::getContextAnnotations)
-                        .filter(Objects::nonNull)
-                        .flatMap(Collection::stream)
-                        .map(ContextAnnotation::getDomain)
-                        .map(ContextAnnotationDomainDbEntry::parse)
-                        .toList());
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
+    public void addReplyLookupToQuery(long coversationId, int count) {
+        repliesTweetsQueue.offer(new ReplyLookupRequest(repliesTweetsQueue, coversationId, count));
+    }
 
-            try {
-                dm.insertContextAnnotationEntities(tsr.getData().stream()
-                        .map(Tweet::getContextAnnotations)
-                        .filter(Objects::nonNull)
-                        .flatMap(Collection::stream)
-                        .map(ContextAnnotation::getEntity)
-                        .map(ContextAnnotationEntityDbEntry::parse)
-                        .toList());
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
+    public void addUsersTweetsLookupToQuery(long userId, int count) {
+        // TODO
+    }
 
-            try {
-                dm.insertContextAnnotations(tsr.getData().stream()
-                        .map(Tweet::getContextAnnotations)
-                        .filter(Objects::nonNull)
-                        .flatMap(Collection::stream)
-                        .map(ContextAnnotationDbEntry::parse)
-                        .toList());
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
+    public void addUserLookupToQuery(long userId) {
+        addUserLookupToQuery(Collections.singleton(userId));
+    }
 
-            for (Tweet tweet : tsr.getData()) {
-                if (tweet.getContextAnnotations() == null) {
-                    break;
-                }
+    public void addUserLookupToQuery(Collection<Long> userIds) {
+        addUserLookupToQuery(userIds, null);
+    }
 
-                try {
-                    dm.insertTweetContextAnnotations(
-                            Long.parseLong(tweet.getId()),
-                            tweet.getContextAnnotations().stream()
-                                    .map(ContextAnnotation::getDomain)
-                                    .map(ContextAnnotationDomainFields::getId)
-                                    .map(Long::parseLong)
-                                    .collect(Collectors.toList()),
-                            tweet.getContextAnnotations().stream()
-                                    .map(ContextAnnotation::getEntity)
-                                    .map(ContextAnnotationEntityFields::getId)
-                                    .map(Long::parseLong)
-                                    .collect(Collectors.toList())
-                    );
-                } catch (SQLException e) {
-                    e.printStackTrace();
-                }
-            }
-
-            try {
-                dm.insertTweetReferences(tsr.getData().stream()
-                        .filter(t -> t.getReferencedTweets() != null)
-                        .flatMap(t -> TweetReferenceDbEntry.parse(t).stream())
-                        .collect(Collectors.toList())
-                );
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-
-//
-//            for (Tweet t : tsr.getData()) {
-////                UserDbEntry userDbEntry = UserDbEntry.parse(tsr.getIncludes().getUsers().get(i++));
-////                TweetDbEntry tweetDbEntry = TweetDbEntry.parse(t, query);
-//
-//                ArrayList<ContextAnnotationDbEntry> contextAnnotationDbEntries = new ArrayList<>();
-//                ArrayList<ContextAnnotationDomainDbEntry> contextAnnotationDomainDbEntries = new ArrayList<>();
-//                ArrayList<ContextAnnotationEntityDbEntry> contextAnnotationEntityDbEntries = new ArrayList<>();
-//                if (t.getContextAnnotations() != null) {
-//                    for (ContextAnnotation ca : t.getContextAnnotations()) {
-//                        contextAnnotationDbEntries.add(ContextAnnotationDbEntry.parse(ca));
-//                        contextAnnotationDomainDbEntries.add(ContextAnnotationDomainDbEntry.parse(ca.getDomain()));
-//                        contextAnnotationEntityDbEntries.add(ContextAnnotationEntityDbEntry.parse(ca.getEntity()));
-//                    }
-//                }
-//
-//                ArrayList<TweetReferenceDbEntry> tweetReferenceDbEntries = new ArrayList<>();
-//                if (t.getReferencedTweets() != null) {
-//                    for (TweetReferencedTweets rt : t.getReferencedTweets()) {
-//                        tweetReferenceDbEntries.add(TweetReferenceDbEntry.parse(Long.parseLong(t.getId()), rt));
-//                    }
-//                }
-//
-//                try {
-////                    dm.insertUser(userDbEntry);
-////                    dm.insertTweet(tweetDbEntry);
-//                    for (ContextAnnotationDomainDbEntry entry : contextAnnotationDomainDbEntries) {
-//                        dm.insertContextAnnotationDomain(entry);
-//                    }
-//                    for (ContextAnnotationEntityDbEntry entry : contextAnnotationEntityDbEntries) {
-//                        dm.insertContextAnnotationEntity(entry);
-//                    }
-//                    for (ContextAnnotationDbEntry entry : contextAnnotationDbEntries) {
-//                        dm.insertContextAnnotation(entry);
-//                    }
-//                    for (ContextAnnotationDbEntry entry : contextAnnotationDbEntries) {
-//                        Optional<ContextAnnotationDbEntry> oe = dm.getContextAnnotation(entry.getContextAnnotationEntityId());
-//                        if (oe.isPresent()) {
-//                            dm.insertTweetContextAnnotation(TweetContextAnnotationDbEntry.builder()
-//                                    .contextAnnotationId(oe.get().getId())
-//                                    .tweetId(Long.parseLong(t.getId()))
-//                                    .build());
-//                        } else {
-//                            log.info("Could not find context annotation entity with id " + entry.getContextAnnotationEntityId() + " for tweet " + t.getId() + "\n" +
-//                                    "Context annotation: " + contextAnnotationEntityDbEntries.stream().filter(p -> p.getId() == entry.getContextAnnotationEntityId()).findFirst().get());
-//                        }
-//                    }
-//                    for (TweetReferenceDbEntry entry : tweetReferenceDbEntries) {
-//                        dm.insertTweetReference(entry);
-//                    }
-//                } catch (SQLException e) {
-//                    e.printStackTrace();
-//                }
-//            }
-        }
+    public void addUserLookupToQuery(Collection<Long> userIds, Runnable runAfterExecution) {
+        throw new NotImplementedException("Not implemented yet");
     }
 }

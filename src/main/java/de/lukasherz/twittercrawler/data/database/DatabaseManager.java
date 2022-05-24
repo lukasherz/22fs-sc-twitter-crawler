@@ -333,12 +333,19 @@ public class DatabaseManager {
     }
 
     public void insertFollowing(long userId, long followingId) throws SQLException {
+        insertFollowings(userId, Collections.singletonList(followingId));
+    }
+
+    public void insertFollowings(long userId, List<Long> followingIds) throws SQLException {
         try (Connection connection = getNewConnection(); PreparedStatement ps = connection.prepareStatement(
                 "INSERT INTO user_following (user_id, following_id) VALUES (?, ?) ON DUPLICATE KEY UPDATE id = id")) {
-            ps.setLong(1, userId);
-            ps.setLong(2, followingId);
+            for (long followingId : followingIds) {
+                ps.setLong(1, userId);
+                ps.setLong(2, followingId);
 
-            ps.execute();
+                ps.addBatch();
+            }
+            ps.executeBatch();
         }
     }
 
@@ -890,7 +897,7 @@ public class DatabaseManager {
     public List<TweetReferenceDbEntry> getAllTweetReferences() throws SQLException {
         List<TweetReferenceDbEntry> tweetReferenceDbEntries = new ArrayList<>();
         try (Connection connection = getNewConnection(); PreparedStatement ps = connection.prepareStatement(
-                "SELECT id, tweet_id, referenced_tweet_id, reference_type FROM tweet_references")) {
+                "SELECT id, tweet_id, referenced_tweet_id, reference_type FROM tweet_references_extern")) {
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     tweetReferenceDbEntries.add(new TweetReferenceDbEntry(

@@ -33,7 +33,7 @@ public abstract class Request<T> {
 
     }
 
-    enum Priority {
+    public enum Priority {
         HIGHEST(2),
         HIGH(1),
         NORMAL(0),

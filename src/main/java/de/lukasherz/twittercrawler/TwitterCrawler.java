@@ -1,58 +1,32 @@
 package de.lukasherz.twittercrawler;
 
+import com.google.common.collect.ImmutableList;
 import de.lukasherz.twittercrawler.crawler.CrawlerHandler;
+import java.util.Arrays;
 
 public class TwitterCrawler {
 
-    public static void main(String[] args) {
-        CrawlerHandler crawlerHandler = CrawlerHandler.getInstance();
-        crawlerHandler.startSchedulers();
-        crawlerHandler.addHashtagSearchToQuery("#1989TaylorsVersion", 10);
-    }
+    private static final ImmutableList<String> TOKENS = ImmutableList.of(
+        "AAAAAAAAAAAAAAAAAAAAAAnqcQEAAAAAvCh8TM%2FpzS3pnvFL%2B9eraD5LJNo%3D1cAwKaKCB8hbbJAK4TtMX0YzyFv77CSiDHJYry5jrJ8V916ZFA",
+        "AAAAAAAAAAAAAAAAAAAAAKXrcQEAAAAAEFV%2BFRwZ%2Bs1yk6jWKjkqANvM0%2F0%3DpuMWkXJMkJuxsAMh94QlwlABMvdwffLWS3fD1HCksaR18ARaRb",
+        "AAAAAAAAAAAAAAAAAAAAAGLrcQEAAAAAXVPWeR34g3%2FVBOzrwJd54%2FH5oAo%3Df1nMWHK1c8YDgjVxC16ihfnRlJQ3KfnGwkKO72aSCAbwJdlY4f"
+    );
+    public static String TOKEN = "";
 
-//        TwitterApi api = new TwitterApi();
-//        api.setTwitterCredentials(new TwitterCredentialsBearer("AAAAAAAAAAAAAAAAAAAAAAnqcQEAAAAAvCh8TM%2FpzS3pnvFL%2B9eraD5LJNo%3D1cAwKaKCB8hbbJAK4TtMX0YzyFv77CSiDHJYry5jrJ8V916ZFA"));
-//
-//        List<Tweet> data;
-//
-//        try {
-//            data = api.tweets().tweetsRecentSearch(
-//                    "#trump -is:retweet -is:reply -is:quote lang:en",
-//                    null,
-//                    OffsetDateTime.now().minus(1, ChronoUnit.DAYS),
-//                    null,
-//                    null,
-//                    null,
-//                    null,
-//                    null,
-//                    null,
-//                    null,
-//                    null,
-//                    null,
-//                    null,
-//                    null,
-//                    null).getData();
-//        } catch (ApiException e) {
-//            throw new RuntimeException(e);
-//        }
-//
-//        if (data == null) return;
-//
-//        for (Tweet tweet : data) {
-//            try {
-//                System.out.println("--------------START---------------");
-//                SingleTweetLookupResponse tweetById = api.tweets().findTweetById(tweet.getId(), null, Set.of("context_annotations", "entities", "geo"), null, null, null, null);
-//                System.out.println(tweetById.getData().getText());
-//                System.out.println(tweetById.getData().getGeo());
-//                System.out.println(tweetById.getData().getId());
-//                List<ContextAnnotation> contextAnnotations = tweetById.getData().getContextAnnotations();
-//                if (contextAnnotations != null) {
-//                    contextAnnotations.stream().map(ContextAnnotation::toString).forEach(System.out::println);
-//                }
-//                System.out.println("https://twitter.com/random/status/" + tweetById.getData().getId());
-//                System.out.println("---------------END----------------\n\n");
-//            } catch (ApiException e) {
-//                throw new RuntimeException(e);
-//            }
-//        }
+    public static void main(String[] args) {
+        if (args.length == 0) {
+            System.out.println("Usage: java -jar TwitterCrawler.jar <token_id> <count_of-tweets_per_hashtag> <#hashtags...>");
+            return;
+        }
+
+        TOKEN = TOKENS.get(Integer.parseInt(args[0]));
+
+        CrawlerHandler crawlerHandler = CrawlerHandler.getInstance();
+
+        for (String arg : Arrays.stream(args).skip(2).toList()) {
+            crawlerHandler.addHashtagSearchToQuery(arg, Integer.parseInt(args[1]));
+        }
+
+        crawlerHandler.startSchedulers();
+    }
 }

@@ -12,12 +12,10 @@ import de.lukasherz.twittercrawler.crawler.Request;
 import de.lukasherz.twittercrawler.crawler.RequestPriorityQueue;
 import de.lukasherz.twittercrawler.data.database.DatabaseManager;
 import de.lukasherz.twittercrawler.data.entities.tweets.TweetDbEntry;
-import de.lukasherz.twittercrawler.data.entities.tweets.TweetReferenceDbEntry;
 import de.lukasherz.twittercrawler.data.entities.tweets.contextannotation.ContextAnnotationDbEntry;
 import de.lukasherz.twittercrawler.data.entities.tweets.contextannotation.ContextAnnotationDomainDbEntry;
 import de.lukasherz.twittercrawler.data.entities.tweets.contextannotation.ContextAnnotationEntityDbEntry;
 import de.lukasherz.twittercrawler.data.entities.users.UserDbEntry;
-import java.sql.Date;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -133,11 +131,12 @@ public class HashtagSearchRequest extends Request<TweetSearchResponse> {
                     );
                 }
 
-                dm.insertTweetReferences(tsr.getData().stream()
-                    .filter(t -> t.getReferencedTweets() != null)
-                    .flatMap(t -> TweetReferenceDbEntry.parse(t).stream())
-                    .collect(Collectors.toList())
-                );
+                // no references because they are excluded in query
+//                dm.insertTweetReferences(tsr.getData().stream()
+//                    .filter(t -> t.getReferencedTweets() != null)
+//                    .flatMap(t -> TweetReferenceDbEntry.parse(t).stream())
+//                    .collect(Collectors.toList())
+//                );
 
             }
         } catch (SQLException e) {
@@ -156,9 +155,9 @@ public class HashtagSearchRequest extends Request<TweetSearchResponse> {
                 null,
                 null,
                 getCountForThisRun(),
-                "relevancy",
-                token,
                 null,
+                null,
+                token,
                 Set.of(
                     "author_id",
                     "entities.mentions.username",

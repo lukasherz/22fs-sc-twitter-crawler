@@ -3,7 +3,6 @@ package de.lukasherz.twittercrawler.data.database;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import de.lukasherz.twittercrawler.data.entities.tweets.TweetDbEntry;
-import de.lukasherz.twittercrawler.data.entities.tweets.TweetReferenceDbEntry;
 import de.lukasherz.twittercrawler.data.entities.tweets.contextannotation.ContextAnnotationDbEntry;
 import de.lukasherz.twittercrawler.data.entities.tweets.contextannotation.ContextAnnotationDomainDbEntry;
 import de.lukasherz.twittercrawler.data.entities.tweets.contextannotation.ContextAnnotationEntityDbEntry;
@@ -100,8 +99,8 @@ public class DatabaseManager {
                 "    verified            BOOL          NULL," +
                 "    profile_picture_url VARCHAR(1023) NULL," +
                 "    location            VARCHAR(255)  NULL," +
-                "    url                 VARCHAR(255)  NULL," +
-                "    biography           VARCHAR(255)  NULL," +
+                "    url                 VARCHAR(1023)  NULL," +
+                "    biography           VARCHAR(1023)  NULL," +
                 "    PRIMARY KEY (id)" +
                 ");")) {
             ps.execute();
@@ -156,7 +155,7 @@ public class DatabaseManager {
                 "    metrics_reply_count   INT           NOT NULL," +
                 "    metrics_quote_count   INT           NOT NULL," +
                 "    lang                  VARCHAR(15)," +
-                "    geo                   VARCHAR(255)," +
+                "    geo                   VARCHAR(1023)," +
                 "    PRIMARY KEY (id)," +
                 "    FOREIGN KEY (author_id) REFERENCES users (id)" +
                 ");")) {
@@ -192,17 +191,65 @@ public class DatabaseManager {
         }
 
         try (Connection connection = getNewConnection(); PreparedStatement ps = connection.prepareStatement(
-            "CREATE TABLE IF NOT EXISTS tweet_references_extern(" +
-                "    id                  BIGINT AUTO_INCREMENT," +
-                "    tweet_id            BIGINT      NOT NULL," +
-                "    referenced_tweet_id BIGINT      NOT NULL," +
-                "    reference_type      VARCHAR(15) NOT NULL," +
-                "    PRIMARY KEY (id)," +
-                "    FOREIGN KEY (tweet_id) REFERENCES tweets (id)," +
-                "    UNIQUE (tweet_id, referenced_tweet_id, reference_type)" +
-                ");")) {
+            "CREATE TABLE IF NOT EXISTS users_pre_processed "
+                + "( "
+                + "    id                    BIGINT PRIMARY KEY, "
+                + "    user_id               BIGINT, "
+                + "    gender                INTEGER, "
+                + "    political_affiliation INTEGER, "
+                + "    democrat_following    INTEGER, "
+                + "    republican_following  INTEGER, "
+                + "    following_base        INTEGER, "
+                + "    FOREIGN KEY (user_id) REFERENCES users (id) ON UPDATE RESTRICT ON DELETE CASCADE "
+                + ");")) {
             ps.execute();
         }
+
+        try (Connection connection = getNewConnection(); PreparedStatement ps = connection.prepareStatement(
+            "CREATE OR REPLACE VIEW data_preprocessed AS "
+                + "SELECT tweets.id                                 as tweet_id, "
+                + "       tweets.author_id                          as user_id, "
+                + "       tweets.text                               as tweet_text, "
+                + "       tweets.created_at                         as tweet_created_at, "
+                + "       tweets.search_query                       as tweet_search_query, "
+                + "       tweets.metrics_like_count                 as tweet_metrics_like_count, "
+                + "       tweets.metrics_quote_count                as tweet_metrics_quote_count, "
+                + "       tweets.metrics_reply_count                as tweet_metrics_reply_count, "
+                + "       tweets.metrics_retweet_count              as tweet_metrics_retweet_count, "
+                + "       tweets.lang                               as tweet_lang, "
+                + "       users.creation_date                       as user_creation_date, "
+                + "       users.username                            as user_username, "
+                + "       users.name                                as user_name, "
+                + "       users.verified                            as user_verified, "
+                + "       users.profile_picture_url                 as user_profile_picture_url, "
+                + "       users.location                            as user_location, "
+                + "       users.url                                 as user_url, "
+                + "       users.biography                           as user_biography, "
+                + "       users_pre_processed.gender                as user_gender, "
+                + "       users_pre_processed.political_affiliation as user_political_affiliation, "
+                + "       users_pre_processed.democrat_following    as user_democrat_following, "
+                + "       users_pre_processed.republican_following  as user_republican_following, "
+                + "       users_pre_processed.following_base        as user_following_count "
+                + "FROM tweets "
+                + "         INNER JOIN users ON tweets.author_id = users.id "
+                + "         INNER JOIN users_pre_processed ON users.id = users_pre_processed.user_id "
+                + "WHERE users_pre_processed.gender <> -1 "
+                + "  AND users_pre_processed.political_affiliation <> -1;")) {
+            ps.execute();
+        }
+
+//        try (Connection connection = getNewConnection(); PreparedStatement ps = connection.prepareStatement(
+//            "CREATE TABLE IF NOT EXISTS tweet_references_extern(" +
+//                "    id                  BIGINT AUTO_INCREMENT," +
+//                "    tweet_id            BIGINT      NOT NULL," +
+//                "    referenced_tweet_id BIGINT      NOT NULL," +
+//                "    reference_type      VARCHAR(15) NOT NULL," +
+//                "    PRIMARY KEY (id)," +
+//                "    FOREIGN KEY (tweet_id) REFERENCES tweets (id)," +
+//                "    UNIQUE (tweet_id, referenced_tweet_id, reference_type)" +
+//                ");")) {
+//            ps.execute();
+//        }
     }
 
     public void insertUser(UserDbEntry userDbEntry) throws SQLException {
@@ -764,118 +811,119 @@ public class DatabaseManager {
         return tweetContextAnnotationDbEntries;
     }
 
-    public void insertTweetReference(TweetReferenceDbEntry tweetReferenceDbEntry) throws SQLException {
-        insertTweetReferences(Collections.singletonList(tweetReferenceDbEntry));
-    }
-
-    public void insertTweetReferences(List<TweetReferenceDbEntry> tweetReferenceDbEntries) throws SQLException {
-        try (Connection connection = getNewConnection(); PreparedStatement ps = connection.prepareStatement(
-            "INSERT INTO tweet_references_extern(tweet_id, referenced_tweet_id, reference_type) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE id = id")) {
-            for (TweetReferenceDbEntry tweetReferenceDbEntry : tweetReferenceDbEntries) {
-                ps.setLong(1, tweetReferenceDbEntry.getTweetId());
-                ps.setLong(2, tweetReferenceDbEntry.getReferencedTweetId());
-                ps.setString(3, tweetReferenceDbEntry.getReferenceType());
-                ps.addBatch();
-            }
-            ps.executeBatch();
-        }
-    }
-
-    public boolean existsTweetReference(long tweetId, long referencedTweetId) throws SQLException {
-        try (Connection connection = getNewConnection(); PreparedStatement ps = connection.prepareStatement(
-            "SELECT id FROM tweet_references_extern WHERE tweet_id = ? AND referenced_tweet_id = ?")) {
-            ps.setLong(1, tweetId);
-            ps.setLong(2, referencedTweetId);
-            try (ResultSet rs = ps.executeQuery()) {
-                return rs.next();
-            }
-        }
-    }
-
-    public boolean existsTweetReference(TweetDbEntry tweetDbEntry, TweetDbEntry referencedTweetDbEntry)
-        throws SQLException {
-        return existsTweetReference(tweetDbEntry.getId(), referencedTweetDbEntry.getId());
-    }
-
-    public Optional<TweetReferenceDbEntry> getTweetReference(TweetDbEntry tweetDbEntry,
-                                                             TweetDbEntry referencedTweetDbEntry) throws SQLException {
-        try (Connection connection = getNewConnection(); PreparedStatement ps = connection.prepareStatement(
-            "SELECT id, tweet_id, referenced_tweet_id, reference_type FROM tweet_references_extern WHERE tweet_id = ? AND referenced_tweet_id = ?")) {
-            ps.setLong(1, tweetDbEntry.getId());
-            ps.setLong(2, referencedTweetDbEntry.getId());
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    return Optional.of(new TweetReferenceDbEntry(
-                        rs.getLong("id"),
-                        rs.getLong("tweet_id"),
-                        rs.getLong("referenced_tweet_id"),
-                        rs.getString("reference_type")));
-                }
-            }
-        }
-        return Optional.empty();
-    }
-
-    public List<TweetReferenceDbEntry> getAllTweetReferencesByTweet(long tweetId) throws SQLException {
-        List<TweetReferenceDbEntry> tweetReferenceDbEntries = new ArrayList<>();
-        try (Connection connection = getNewConnection(); PreparedStatement ps = connection.prepareStatement(
-            "SELECT id, tweet_id, referenced_tweet_id, reference_type FROM tweet_references_extern WHERE tweet_id = ?")) {
-            ps.setLong(1, tweetId);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    tweetReferenceDbEntries.add(new TweetReferenceDbEntry(
-                        rs.getLong("id"),
-                        rs.getLong("tweet_id"),
-                        rs.getLong("referenced_tweet_id"),
-                        rs.getString("reference_type")));
-                }
-            }
-        }
-        return tweetReferenceDbEntries;
-    }
-
-    public List<TweetReferenceDbEntry> getAllTweetReferencesByTweet(TweetDbEntry tweetDbEntry) throws SQLException {
-        return getAllTweetReferencesByTweet(tweetDbEntry.getId());
-    }
-
-    public List<TweetReferenceDbEntry> getAllTweetReferencesByReferencedTweet(long referencedTweetId)
-        throws SQLException {
-        List<TweetReferenceDbEntry> tweetReferenceDbEntries = new ArrayList<>();
-        try (Connection connection = getNewConnection(); PreparedStatement ps = connection.prepareStatement(
-            "SELECT id, tweet_id, referenced_tweet_id, reference_type FROM tweet_references_extern WHERE referenced_tweet_id = ?")) {
-            ps.setLong(1, referencedTweetId);
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    tweetReferenceDbEntries.add(new TweetReferenceDbEntry(
-                        rs.getLong("id"),
-                        rs.getLong("tweet_id"),
-                        rs.getLong("referenced_tweet_id"),
-                        rs.getString("reference_type")));
-                }
-            }
-        }
-        return tweetReferenceDbEntries;
-    }
-
-    public List<TweetReferenceDbEntry> getAllTweetReferencesByReferencedTweet(TweetDbEntry tweetDbEntry)
-        throws SQLException {
-        return getAllTweetReferencesByReferencedTweet(tweetDbEntry.getId());
-    }
-
-    public List<TweetReferenceDbEntry> getAllTweetReferences() throws SQLException {
-        List<TweetReferenceDbEntry> tweetReferenceDbEntries = new ArrayList<>();
-        try (Connection connection = getNewConnection(); PreparedStatement ps = connection.prepareStatement(
-            "SELECT id, tweet_id, referenced_tweet_id, reference_type FROM tweet_references_extern")) {
-            try (ResultSet rs = ps.executeQuery()) {
-                while (rs.next()) {
-                    tweetReferenceDbEntries.add(new TweetReferenceDbEntry(
-                        rs.getLong("id"),
-                        rs.getLong("tweet_id"),
-                        rs.getLong("referenced_tweet_id"),
-                        rs.getString("reference_type")));
-                }
-            }
-        }
-        return tweetReferenceDbEntries;
-    }
+    // no references exists because they are excluded in the search query
+//    public void insertTweetReference(TweetReferenceDbEntry tweetReferenceDbEntry) throws SQLException {
+//        insertTweetReferences(Collections.singletonList(tweetReferenceDbEntry));
+//    }
+//
+//    public void insertTweetReferences(List<TweetReferenceDbEntry> tweetReferenceDbEntries) throws SQLException {
+//        try (Connection connection = getNewConnection(); PreparedStatement ps = connection.prepareStatement(
+//            "INSERT INTO tweet_references_extern(tweet_id, referenced_tweet_id, reference_type) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE id = id")) {
+//            for (TweetReferenceDbEntry tweetReferenceDbEntry : tweetReferenceDbEntries) {
+//                ps.setLong(1, tweetReferenceDbEntry.getTweetId());
+//                ps.setLong(2, tweetReferenceDbEntry.getReferencedTweetId());
+//                ps.setString(3, tweetReferenceDbEntry.getReferenceType());
+//                ps.addBatch();
+//            }
+//            ps.executeBatch();
+//        }
+//    }
+//
+//    public boolean existsTweetReference(long tweetId, long referencedTweetId) throws SQLException {
+//        try (Connection connection = getNewConnection(); PreparedStatement ps = connection.prepareStatement(
+//            "SELECT id FROM tweet_references_extern WHERE tweet_id = ? AND referenced_tweet_id = ?")) {
+//            ps.setLong(1, tweetId);
+//            ps.setLong(2, referencedTweetId);
+//            try (ResultSet rs = ps.executeQuery()) {
+//                return rs.next();
+//            }
+//        }
+//    }
+//
+//    public boolean existsTweetReference(TweetDbEntry tweetDbEntry, TweetDbEntry referencedTweetDbEntry)
+//        throws SQLException {
+//        return existsTweetReference(tweetDbEntry.getId(), referencedTweetDbEntry.getId());
+//    }
+//
+//    public Optional<TweetReferenceDbEntry> getTweetReference(TweetDbEntry tweetDbEntry,
+//                                                             TweetDbEntry referencedTweetDbEntry) throws SQLException {
+//        try (Connection connection = getNewConnection(); PreparedStatement ps = connection.prepareStatement(
+//            "SELECT id, tweet_id, referenced_tweet_id, reference_type FROM tweet_references_extern WHERE tweet_id = ? AND referenced_tweet_id = ?")) {
+//            ps.setLong(1, tweetDbEntry.getId());
+//            ps.setLong(2, referencedTweetDbEntry.getId());
+//            try (ResultSet rs = ps.executeQuery()) {
+//                if (rs.next()) {
+//                    return Optional.of(new TweetReferenceDbEntry(
+//                        rs.getLong("id"),
+//                        rs.getLong("tweet_id"),
+//                        rs.getLong("referenced_tweet_id"),
+//                        rs.getString("reference_type")));
+//                }
+//            }
+//        }
+//        return Optional.empty();
+//    }
+//
+//    public List<TweetReferenceDbEntry> getAllTweetReferencesByTweet(long tweetId) throws SQLException {
+//        List<TweetReferenceDbEntry> tweetReferenceDbEntries = new ArrayList<>();
+//        try (Connection connection = getNewConnection(); PreparedStatement ps = connection.prepareStatement(
+//            "SELECT id, tweet_id, referenced_tweet_id, reference_type FROM tweet_references_extern WHERE tweet_id = ?")) {
+//            ps.setLong(1, tweetId);
+//            try (ResultSet rs = ps.executeQuery()) {
+//                while (rs.next()) {
+//                    tweetReferenceDbEntries.add(new TweetReferenceDbEntry(
+//                        rs.getLong("id"),
+//                        rs.getLong("tweet_id"),
+//                        rs.getLong("referenced_tweet_id"),
+//                        rs.getString("reference_type")));
+//                }
+//            }
+//        }
+//        return tweetReferenceDbEntries;
+//    }
+//
+//    public List<TweetReferenceDbEntry> getAllTweetReferencesByTweet(TweetDbEntry tweetDbEntry) throws SQLException {
+//        return getAllTweetReferencesByTweet(tweetDbEntry.getId());
+//    }
+//
+//    public List<TweetReferenceDbEntry> getAllTweetReferencesByReferencedTweet(long referencedTweetId)
+//        throws SQLException {
+//        List<TweetReferenceDbEntry> tweetReferenceDbEntries = new ArrayList<>();
+//        try (Connection connection = getNewConnection(); PreparedStatement ps = connection.prepareStatement(
+//            "SELECT id, tweet_id, referenced_tweet_id, reference_type FROM tweet_references_extern WHERE referenced_tweet_id = ?")) {
+//            ps.setLong(1, referencedTweetId);
+//            try (ResultSet rs = ps.executeQuery()) {
+//                while (rs.next()) {
+//                    tweetReferenceDbEntries.add(new TweetReferenceDbEntry(
+//                        rs.getLong("id"),
+//                        rs.getLong("tweet_id"),
+//                        rs.getLong("referenced_tweet_id"),
+//                        rs.getString("reference_type")));
+//                }
+//            }
+//        }
+//        return tweetReferenceDbEntries;
+//    }
+//
+//    public List<TweetReferenceDbEntry> getAllTweetReferencesByReferencedTweet(TweetDbEntry tweetDbEntry)
+//        throws SQLException {
+//        return getAllTweetReferencesByReferencedTweet(tweetDbEntry.getId());
+//    }
+//
+//    public List<TweetReferenceDbEntry> getAllTweetReferences() throws SQLException {
+//        List<TweetReferenceDbEntry> tweetReferenceDbEntries = new ArrayList<>();
+//        try (Connection connection = getNewConnection(); PreparedStatement ps = connection.prepareStatement(
+//            "SELECT id, tweet_id, referenced_tweet_id, reference_type FROM tweet_references_extern")) {
+//            try (ResultSet rs = ps.executeQuery()) {
+//                while (rs.next()) {
+//                    tweetReferenceDbEntries.add(new TweetReferenceDbEntry(
+//                        rs.getLong("id"),
+//                        rs.getLong("tweet_id"),
+//                        rs.getLong("referenced_tweet_id"),
+//                        rs.getString("reference_type")));
+//                }
+//            }
+//        }
+//        return tweetReferenceDbEntries;
+//    }
 }

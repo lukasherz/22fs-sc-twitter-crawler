@@ -56,12 +56,15 @@ public class FollowsLookupRequest extends Request<UsersFollowingLookupResponse> 
             if (getCountLeft() > 0
                 && (uflr.getMeta() != null && uflr.getMeta().getResultCount() != null
                 && uflr.getMeta().getResultCount() == getCountForThisRun())) {
-                queue.offer(new FollowsLookupRequest(
+
+                FollowsLookupRequest nextRequest = new FollowsLookupRequest(
                     queue,
                     getUserId(),
                     getCountLeft(),
                     uflr.getMeta() != null ? uflr.getMeta().getNextToken() : null
-                ));
+                );
+                nextRequest.setPriority(Priority.HIGH);
+                queue.offer(nextRequest);
             }
 
             return uflr;

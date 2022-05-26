@@ -77,119 +77,95 @@ public class HashtagSearchRequest extends Request<TweetSearchResponse> {
         DatabaseManager dm = DatabaseManager.getInstance();
         CrawlerHandler ch = CrawlerHandler.getInstance();
 
-        if (tsr.getIncludes() != null && tsr.getIncludes().getUsers() != null) {
-            try {
+        try {
+            if (tsr.getIncludes() != null && tsr.getIncludes().getUsers() != null) {
                 dm.insertUsers(tsr.getIncludes().getUsers().stream().map(UserDbEntry::parse).toList());
-            } catch (SQLException e) {
-                e.printStackTrace();
+
+                tsr.getIncludes().getUsers().stream()
+                    .map(User::getId)
+                    .map(Long::parseLong)
+                    .forEach(ch::addFollowsLookupToQuery);
+
+                tsr.getIncludes().getUsers().stream()
+                    .map(User::getId)
+                    .map(Long::parseLong)
+                    .forEach(id -> ch.addUsersTweetsLookupToQuery(id, 20));
             }
 
-            tsr.getIncludes().getUsers().stream()
-                .map(User::getId)
-                .map(Long::parseLong)
-                .forEach(ch::addFollowsLookupToQuery);
-
-            tsr.getIncludes().getUsers().stream()
-                .map(User::getId)
-                .map(Long::parseLong)
-                .forEach(id -> ch.addUsersTweetsLookupToQuery(id, 20));
-        }
-
-        if (tsr.getData() != null) {
-            try {
+            if (tsr.getData() != null) {
                 dm.insertTweets(tsr.getData().stream().map(m -> TweetDbEntry.parse(m, getQuery())).toList());
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
 
-            // replies
-            tsr.getData().stream()
-                .filter(t -> t.getConversationId() != null)
-                .map(Tweet::getConversationId)
-                .map(Long::parseLong)
-                .forEach(id -> ch.addReplyLookupToQuery(id, 100));
+                tsr.getData().stream()
+                    .map(Tweet::getConversationId)
+                    .filter(Objects::nonNull)
+                    .map(Long::parseLong)
+                    .forEach(id -> ch.addReplyLookupToQuery(id, 100));
 
-            tsr.getData().stream()
-                .map(Tweet::getId)
-                .map(Long::parseLong)
-                .forEach(id -> ch.addQuotesLookupToQuery(id, 100));
+                tsr.getData().stream()
+                    .map(Tweet::getId)
+                    .map(Long::parseLong)
+                    .forEach(id -> ch.addQuotesLookupToQuery(id, 100));
 
-            tsr.getData().stream()
-                .map(Tweet::getId)
-                .map(Long::parseLong)
-                .forEach(id -> ch.addRetweetsLookupToQuery(id, 100));
+                tsr.getData().stream()
+                    .map(Tweet::getId)
+                    .map(Long::parseLong)
+                    .forEach(id -> ch.addRetweetsLookupToQuery(id, 100));
 
-            tsr.getData().stream()
-                .map(Tweet::getId)
-                .map(Long::parseLong)
-                .forEach(id -> ch.addLikingUsersLookupToQuery(id, 100));
-        }
+                tsr.getData().stream()
+                    .map(Tweet::getId)
+                    .map(Long::parseLong)
+                    .forEach(id -> ch.addLikingUsersLookupToQuery(id, 100));
 
-        try {
-            dm.insertContextAnnotationDomains(tsr.getData().stream()
-                .map(Tweet::getContextAnnotations)
-                .filter(Objects::nonNull)
-                .flatMap(Collection::stream)
-                .map(ContextAnnotation::getDomain)
-                .map(ContextAnnotationDomainDbEntry::parse)
-                .toList());
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+                dm.insertContextAnnotationDomains(tsr.getData().stream()
+                    .map(Tweet::getContextAnnotations)
+                    .filter(Objects::nonNull)
+                    .flatMap(Collection::stream)
+                    .map(ContextAnnotation::getDomain)
+                    .map(ContextAnnotationDomainDbEntry::parse)
+                    .toList());
 
-        try {
-            dm.insertContextAnnotationEntities(tsr.getData().stream()
-                .map(Tweet::getContextAnnotations)
-                .filter(Objects::nonNull)
-                .flatMap(Collection::stream)
-                .map(ContextAnnotation::getEntity)
-                .map(ContextAnnotationEntityDbEntry::parse)
-                .toList());
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+                dm.insertContextAnnotationEntities(tsr.getData().stream()
+                    .map(Tweet::getContextAnnotations)
+                    .filter(Objects::nonNull)
+                    .flatMap(Collection::stream)
+                    .map(ContextAnnotation::getEntity)
+                    .map(ContextAnnotationEntityDbEntry::parse)
+                    .toList());
 
-        try {
-            dm.insertContextAnnotations(tsr.getData().stream()
-                .map(Tweet::getContextAnnotations)
-                .filter(Objects::nonNull)
-                .flatMap(Collection::stream)
-                .map(ContextAnnotationDbEntry::parse)
-                .toList());
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+                dm.insertContextAnnotations(tsr.getData().stream()
+                    .map(Tweet::getContextAnnotations)
+                    .filter(Objects::nonNull)
+                    .flatMap(Collection::stream)
+                    .map(ContextAnnotationDbEntry::parse)
+                    .toList());
 
-        for (Tweet tweet : tsr.getData()) {
-            if (tweet.getContextAnnotations() == null) {
-                break;
-            }
+                for (Tweet tweet : tsr.getData()) {
+                    if (tweet.getContextAnnotations() == null) {
+                        break;
+                    }
 
-            try {
-                dm.insertTweetContextAnnotations(
-                    Long.parseLong(tweet.getId()),
-                    tweet.getContextAnnotations().stream()
-                        .map(ContextAnnotation::getDomain)
-                        .map(ContextAnnotationDomainFields::getId)
-                        .map(Long::parseLong)
-                        .collect(Collectors.toList()),
-                    tweet.getContextAnnotations().stream()
-                        .map(ContextAnnotation::getEntity)
-                        .map(ContextAnnotationEntityFields::getId)
-                        .map(Long::parseLong)
-                        .collect(Collectors.toList())
+                    dm.insertTweetContextAnnotations(
+                        Long.parseLong(tweet.getId()),
+                        tweet.getContextAnnotations().stream()
+                            .map(ContextAnnotation::getDomain)
+                            .map(ContextAnnotationDomainFields::getId)
+                            .map(Long::parseLong)
+                            .collect(Collectors.toList()),
+                        tweet.getContextAnnotations().stream()
+                            .map(ContextAnnotation::getEntity)
+                            .map(ContextAnnotationEntityFields::getId)
+                            .map(Long::parseLong)
+                            .collect(Collectors.toList())
+                    );
+                }
+
+                dm.insertTweetReferences(tsr.getData().stream()
+                    .filter(t -> t.getReferencedTweets() != null)
+                    .flatMap(t -> TweetReferenceDbEntry.parse(t).stream())
+                    .collect(Collectors.toList())
                 );
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        }
 
-        try {
-            dm.insertTweetReferences(tsr.getData().stream()
-                .filter(t -> t.getReferencedTweets() != null)
-                .flatMap(t -> TweetReferenceDbEntry.parse(t).stream())
-                .collect(Collectors.toList())
-            );
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -197,7 +173,7 @@ public class HashtagSearchRequest extends Request<TweetSearchResponse> {
 
     @Override
     protected TweetSearchResponse executeImpl() {
-    log.info("Executing search for query: " + getQuery());
+        log.info("Executing search for query: " + getQuery());
         try {
             TweetSearchResponse tsr = queue.getNextApi().tweets().tweetsRecentSearch(
                 getQuery(),
@@ -273,9 +249,9 @@ public class HashtagSearchRequest extends Request<TweetSearchResponse> {
                     this,
                     Instant.ofEpochSecond(Long.parseLong(e.getResponseHeaders().get("x-rate-limit-reset").get(0)))
                 );
-                log.info("Rate limit reached (" + this.getClass().getName() + "), waiting for " + Date.from(Instant.ofEpochSecond(Long.parseLong(e.getResponseHeaders().get("x-rate-limit-reset").get(0)))));
             } else {
-                log.severe("Could not get rate limit information from response headers. " + this.getClass().getName());
+                log.severe("Could not get rate limit information from response headers. " + this.getClass()
+                    .getSimpleName());
                 e.printStackTrace();
             }
         }

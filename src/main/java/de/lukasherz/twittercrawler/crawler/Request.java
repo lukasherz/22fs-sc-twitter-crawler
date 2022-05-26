@@ -20,7 +20,7 @@ public abstract class Request<T> {
     }
 
     protected T executeAndProcessImpl() {
-        return execute();
+        return executeImpl();
     }
 
     public T executeAndProcess() {

@@ -16,11 +16,14 @@ import de.lukasherz.twittercrawler.crawler.requests.ReplyLookupRequest;
 import de.lukasherz.twittercrawler.crawler.requests.RetweetsLookupRequest;
 import de.lukasherz.twittercrawler.crawler.requests.UserLookupRequest;
 import de.lukasherz.twittercrawler.data.database.DatabaseManager;
+import java.sql.SQLException;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 import lombok.extern.java.Log;
 import org.apache.commons.lang3.NotImplementedException;
 
@@ -50,6 +53,8 @@ public class CrawlerHandler {
 
         Set<String> tokens = Set.of(
             "AAAAAAAAAAAAAAAAAAAAAAnqcQEAAAAAvCh8TM%2FpzS3pnvFL%2B9eraD5LJNo%3D1cAwKaKCB8hbbJAK4TtMX0YzyFv77CSiDHJYry5jrJ8V916ZFA"
+//            "AAAAAAAAAAAAAAAAAAAAAKXrcQEAAAAAEFV%2BFRwZ%2Bs1yk6jWKjkqANvM0%2F0%3DpuMWkXJMkJuxsAMh94QlwlABMvdwffLWS3fD1HCksaR18ARaRb",
+//            "AAAAAAAAAAAAAAAAAAAAAGLrcQEAAAAAXVPWeR34g3%2FVBOzrwJd54%2FH5oAo%3Df1nMWHK1c8YDgjVxC16ihfnRlJQ3KfnGwkKO72aSCAbwJdlY4f"
         );
 
         apisBearer = new HashSet<>();
@@ -91,10 +96,46 @@ public class CrawlerHandler {
         likedTweetsTimer.start();
         repliesTweetsTimer.start();
         userLookupTimer.start();
+
+        new Timer().scheduleAtFixedRate(
+            new TimerTask() {
+                @Override public void run() {
+                    System.out.println("\nCurrently queued requests: \n");
+                    System.out.println("Search recent tweets: " + searchRecentTweetsQueue.size()
+                        + " takes approximately " + (Math.ceil(searchRecentTweetsQueue.size() / 450.) * 15.)
+                        + " minutes");
+                    System.out.println("Following users: " + followingUsersQueue.size()
+                        + " takes approximately " + (Math.ceil(followingUsersQueue.size() / 15.) * 15.) + " minutes");
+                    System.out.println("Quoted tweets: " + quotedTweetsQueue.size()
+                        + " takes approximately " + (Math.ceil(quotedTweetsQueue.size() / 75.) * 15.) + " minutes");
+                    System.out.println("Retweeted tweets: " + retweetedTweetsQueue.size()
+                        + " takes approximately " + (Math.ceil(retweetedTweetsQueue.size() / 75.) * 15.) + " minutes");
+                    System.out.println("Liked tweets: " + likedTweetsQueue.size()
+                        + " takes approximately " + (Math.ceil(likedTweetsQueue.size() / 75.) * 15.) + " minutes");
+                    System.out.println("Replies tweets: " + repliesTweetsQueue.size()
+                        + " takes approximately " + (Math.ceil(repliesTweetsQueue.size() / 450.) * 15.) + " minutes");
+                    System.out.println("User lookup: " + userLookupQueue.size()
+                        + " takes approximately " + (Math.ceil(userLookupQueue.size() / 300.) * 15.) + " minutes");
+
+                    System.out.println("Total requests: " + (searchRecentTweetsQueue.size()
+                        + followingUsersQueue.size() + quotedTweetsQueue.size() + retweetedTweetsQueue.size()
+                        + likedTweetsQueue.size() + repliesTweetsQueue.size() + userLookupQueue.size()));
+
+                    System.out.println(
+                        "Total time: " + (
+                            Math.ceil((searchRecentTweetsQueue.size() + repliesTweetsQueue.size()) / 450.) * 15.
+                                + Math.ceil(followingUsersQueue.size() / 15.) * 15.
+                                + Math.ceil(quotedTweetsQueue.size() / 75.) * 15.
+                                + Math.ceil(retweetedTweetsQueue.size() / 75.) * 15.
+                                + Math.ceil(likedTweetsQueue.size() / 75.) * 15.
+                                + Math.ceil(userLookupQueue.size() / 300.) * 15.) + " minutes");
+                    System.out.println("\n");
+                }
+            }, 0, 10000);
     }
 
     public void handleRateLimit(Request<?> request, Instant nextRequestAllowed) {
-        log.info("Rate limit reached for " + request.getClass().getSimpleName());
+        log.info("Rate limit reached for " + request.getClass().getSimpleName() + ": " + nextRequestAllowed);
 
         if (request instanceof FollowsLookupRequest) {
             followingUsersQueue.setTimeForCurrentEntry(nextRequestAllowed);
@@ -139,19 +180,19 @@ public class CrawlerHandler {
     }
 
     public void addQuotesLookupToQuery(long tweetId, int count) {
-        quotedTweetsQueue.offer(new QuotesLookupRequest(quotedTweetsQueue, tweetId, count));
+//        quotedTweetsQueue.offer(new QuotesLookupRequest(quotedTweetsQueue, tweetId, count));
     }
 
     public void addRetweetsLookupToQuery(long tweetId, int count) {
-        retweetedTweetsQueue.offer(new RetweetsLookupRequest(retweetedTweetsQueue, tweetId, count));
+//        retweetedTweetsQueue.offer(new RetweetsLookupRequest(retweetedTweetsQueue, tweetId, count));
     }
 
     public void addLikingUsersLookupToQuery(long tweetId, int count) {
-        likedTweetsQueue.offer(new LikingUsersLookupRequest(likedTweetsQueue, tweetId, count));
+//        likedTweetsQueue.offer(new LikingUsersLookupRequest(likedTweetsQueue, tweetId, count));
     }
 
     public void addReplyLookupToQuery(long coversationId, int count) {
-        repliesTweetsQueue.offer(new ReplyLookupRequest(repliesTweetsQueue, coversationId, count));
+//        repliesTweetsQueue.offer(new ReplyLookupRequest(repliesTweetsQueue, coversationId, count));
     }
 
     public void addUsersTweetsLookupToQuery(long userId, int count) {
@@ -167,6 +208,19 @@ public class CrawlerHandler {
     }
 
     public void addUserLookupToQuery(List<Long> userIds, Runnable runAfterExecution) {
+        userIds.removeIf(id -> {
+            try {
+                return dm.existsUser(id);
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+            return false;
+        });
+
+        if (userIds.isEmpty()) {
+            return;
+        }
+
         userLookupQueue.offer(new UserLookupRequest(userLookupQueue, userIds, runAfterExecution));
     }
 }

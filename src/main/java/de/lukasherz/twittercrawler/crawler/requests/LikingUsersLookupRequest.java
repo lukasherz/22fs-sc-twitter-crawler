@@ -64,9 +64,8 @@ public class LikingUsersLookupRequest extends Request<GenericMultipleUsersLookup
                     this,
                     Instant.ofEpochSecond(Long.parseLong(e.getResponseHeaders().get("x-rate-limit-reset").get(0)))
                 );
-                log.info("Rate limit reached (" + this.getClass().getName() + "), waiting for " + Date.from(Instant.ofEpochSecond(Long.parseLong(e.getResponseHeaders().get("x-rate-limit-reset").get(0)))));
             } else {
-                log.severe("Could not get rate limit information from response headers. " + this.getClass().getName());
+                log.severe("Could not get rate limit information from response headers. " + this.getClass().getSimpleName());
                 e.printStackTrace();
             }
         }
@@ -88,8 +87,8 @@ public class LikingUsersLookupRequest extends Request<GenericMultipleUsersLookup
                     try {
                         dm.insertTweetLikes(
                             result.getData().stream()
-                                .map(t -> TweetLikeDbEntry.builder()
-                                    .userId(Long.parseLong(t.getId()))
+                                .map(u -> TweetLikeDbEntry.builder()
+                                    .userId(Long.parseLong(u.getId()))
                                     .tweetId(getTweetId())
                                     .build())
                                 .toList()

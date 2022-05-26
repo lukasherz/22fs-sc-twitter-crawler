@@ -125,9 +125,8 @@ public class QuotesLookupRequest extends Request<QuoteTweetLookupResponse> {
                     this,
                     Instant.ofEpochSecond(Long.parseLong(e.getResponseHeaders().get("x-rate-limit-reset").get(0)))
                 );
-                log.info("Rate limit reached (" + this.getClass().getName() + "), waiting for " + Date.from(Instant.ofEpochSecond(Long.parseLong(e.getResponseHeaders().get("x-rate-limit-reset").get(0)))));
             } else {
-                log.severe("Could not get rate limit information from response headers. " + this.getClass().getName());
+                log.severe("Could not get rate limit information from response headers. " + this.getClass().getSimpleName());
                 e.printStackTrace();
             }
         }
@@ -153,8 +152,6 @@ public class QuotesLookupRequest extends Request<QuoteTweetLookupResponse> {
         if (qtlr.getData() != null) {
             try {
                 dm.insertTweets(qtlr.getData().stream()
-                    .filter(tweet -> tweet.getReferencedTweets() != null)
-                    .filter(t -> t.getReferencedTweets().stream().anyMatch(r -> r.getType() == TypeEnum.QUOTED))
                     .map(m -> TweetDbEntry.parse(m, null))
                     .toList());
             } catch (SQLException e) {
@@ -163,12 +160,8 @@ public class QuotesLookupRequest extends Request<QuoteTweetLookupResponse> {
 
             try {
                 dm.insertTweetQuotes(qtlr.getData().stream()
-                    .filter(tweet -> tweet.getReferencedTweets() != null)
-                    .filter(t -> t.getReferencedTweets().stream().anyMatch(r -> r.getType() == TypeEnum.QUOTED))
                     .map(t -> TweetQuoteDbEntry.builder()
-                        .quotedTweetId(Long.parseLong(t.getReferencedTweets().stream()
-                            .filter(r -> r.getType() == TypeEnum.QUOTED)
-                            .findFirst().get().getId()))
+                        .quotedTweetId(getTweetId())
                         .quoteTweetId(Long.parseLong(t.getId()))
                         .build())
                     .toList());

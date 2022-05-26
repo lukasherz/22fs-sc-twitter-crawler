@@ -7,7 +7,7 @@ public class TwitterCrawler {
     public static void main(String[] args) {
         CrawlerHandler crawlerHandler = CrawlerHandler.getInstance();
         crawlerHandler.startSchedulers();
-        crawlerHandler.addHashtagSearchToQuery("#java", 20);
+        crawlerHandler.addHashtagSearchToQuery("#1989TaylorsVersion", 10);
     }
 
 //        TwitterApi api = new TwitterApi();

@@ -2,13 +2,11 @@ package de.lukasherz.twittercrawler.crawler.requests;
 
 import com.twitter.clientlib.ApiException;
 import com.twitter.clientlib.model.MultiUserLookupResponse;
-import com.twitter.clientlib.model.User;
 import de.lukasherz.twittercrawler.crawler.CrawlerHandler;
 import de.lukasherz.twittercrawler.crawler.Request;
 import de.lukasherz.twittercrawler.crawler.RequestPriorityQueue;
 import de.lukasherz.twittercrawler.data.database.DatabaseManager;
 import de.lukasherz.twittercrawler.data.entities.users.UserDbEntry;
-import java.sql.Date;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.List;
@@ -48,19 +46,7 @@ public class UserLookupRequest extends Request<MultiUserLookupResponse> {
                     "referenced_tweets.id.author_id",
                     "geo.place_id"
                 ),
-                Set.of(
-                    "id",
-                    "created_at",
-                    "text",
-                    "author_id",
-                    "in_reply_to_user_id",
-                    "referenced_tweets",
-                    "geo",
-                    "public_metrics",
-                    "lang",
-                    "context_annotations",
-                    "conversation_id"
-                ),
+                null,
                 Set.of(
                     "id",
                     "created_at",
@@ -91,9 +77,9 @@ public class UserLookupRequest extends Request<MultiUserLookupResponse> {
                     this,
                     Instant.ofEpochSecond(Long.parseLong(e.getResponseHeaders().get("x-rate-limit-reset").get(0)))
                 );
-                log.info("Rate limit reached (" + this.getClass().getName() + "), waiting for " + Date.from(Instant.ofEpochSecond(Long.parseLong(e.getResponseHeaders().get("x-rate-limit-reset").get(0)))));
             } else {
-                log.severe("Could not get rate limit information from response headers. " + this.getClass().getName());
+                log.severe(
+                    "Could not get rate limit information from response headers. " + this.getClass().getSimpleName());
                 e.printStackTrace();
             }
         }
@@ -113,7 +99,6 @@ public class UserLookupRequest extends Request<MultiUserLookupResponse> {
         }
 
         DatabaseManager dm = DatabaseManager.getInstance();
-        CrawlerHandler ch = CrawlerHandler.getInstance();
 
         if (mulr.getData() != null) {
             try {
@@ -121,16 +106,11 @@ public class UserLookupRequest extends Request<MultiUserLookupResponse> {
             } catch (SQLException e) {
                 e.printStackTrace();
             }
-
-            mulr.getData().stream()
-                .map(User::getId)
-                .map(Long::parseLong)
-                .forEach(ch::addFollowsLookupToQuery);
         }
     }
 
     @Override protected void runAfterExecutionImpl(MultiUserLookupResponse result) {
-        if (runAfterExecution != null) {
+        if (runAfterExecution != null && getUserIdsLeft().size() == 0) {
             runAfterExecution.run();
         }
     }

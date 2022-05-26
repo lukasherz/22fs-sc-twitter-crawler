@@ -7,7 +7,7 @@ import de.lukasherz.twittercrawler.crawler.CrawlerHandler;
 import de.lukasherz.twittercrawler.crawler.Request;
 import de.lukasherz.twittercrawler.crawler.RequestPriorityQueue;
 import de.lukasherz.twittercrawler.data.database.DatabaseManager;
-import java.sql.Date;
+import de.lukasherz.twittercrawler.data.entities.users.UserDbEntry;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.stream.Collectors;
@@ -72,7 +72,8 @@ public class FollowsLookupRequest extends Request<UsersFollowingLookupResponse> 
                     Instant.ofEpochSecond(Long.parseLong(e.getResponseHeaders().get("x-rate-limit-reset").get(0)))
                 );
             } else {
-                log.severe("Could not get rate limit information from response headers. " + this.getClass().getSimpleName());
+                log.severe(
+                    "Could not get rate limit information from response headers. " + this.getClass().getSimpleName());
                 e.printStackTrace();
             }
         }
@@ -85,23 +86,17 @@ public class FollowsLookupRequest extends Request<UsersFollowingLookupResponse> 
         DatabaseManager dm = DatabaseManager.getInstance();
 
         if (result != null && result.getData() != null) {
-            ch.addUserLookupToQuery(
-                result.getData().stream()
-                    .map(User::getId)
-                    .map(Long::parseLong)
-                    .collect(Collectors.toList()),
-                () -> {
-                    try {
-                        dm.insertFollowings(
-                            getUserId(),
-                            result.getData().stream()
-                                .map(User::getId)
-                                .map(Long::parseLong)
-                                .collect(Collectors.toList()));
-                    } catch (SQLException e) {
-                        e.printStackTrace();
-                    }
-                });
+            try {
+                dm.insertUsers(result.getData().stream().map(UserDbEntry::parse).toList());
+                dm.insertFollowings(
+                    getUserId(),
+                    result.getData().stream()
+                        .map(User::getId)
+                        .map(Long::parseLong)
+                        .collect(Collectors.toList()));
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
         }
     }
 

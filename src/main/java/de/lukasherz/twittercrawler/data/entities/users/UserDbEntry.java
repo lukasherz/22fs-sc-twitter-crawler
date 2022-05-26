@@ -24,7 +24,7 @@ public class UserDbEntry {
     public static UserDbEntry parse(User user) {
         return UserDbEntry.builder()
                 .id(Long.parseLong(user.getId()))
-                .creationDate(user.getCreatedAt().toInstant())
+                .creationDate(user.getCreatedAt() != null ? user.getCreatedAt().toInstant() : null)
                 .username(user.getUsername())
                 .name(user.getName())
                 .verified(Boolean.TRUE.equals(user.getVerified()))

@@ -85,36 +85,10 @@ public class HashtagSearchRequest extends Request<TweetSearchResponse> {
                     .map(User::getId)
                     .map(Long::parseLong)
                     .forEach(ch::addFollowsLookupToQuery);
-
-                tsr.getIncludes().getUsers().stream()
-                    .map(User::getId)
-                    .map(Long::parseLong)
-                    .forEach(id -> ch.addUsersTweetsLookupToQuery(id, 20));
             }
 
             if (tsr.getData() != null) {
                 dm.insertTweets(tsr.getData().stream().map(m -> TweetDbEntry.parse(m, getQuery())).toList());
-
-                tsr.getData().stream()
-                    .map(Tweet::getConversationId)
-                    .filter(Objects::nonNull)
-                    .map(Long::parseLong)
-                    .forEach(id -> ch.addReplyLookupToQuery(id, 100));
-
-                tsr.getData().stream()
-                    .map(Tweet::getId)
-                    .map(Long::parseLong)
-                    .forEach(id -> ch.addQuotesLookupToQuery(id, 100));
-
-                tsr.getData().stream()
-                    .map(Tweet::getId)
-                    .map(Long::parseLong)
-                    .forEach(id -> ch.addRetweetsLookupToQuery(id, 100));
-
-                tsr.getData().stream()
-                    .map(Tweet::getId)
-                    .map(Long::parseLong)
-                    .forEach(id -> ch.addLikingUsersLookupToQuery(id, 100));
 
                 dm.insertContextAnnotationDomains(tsr.getData().stream()
                     .map(Tweet::getContextAnnotations)

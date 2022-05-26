@@ -2,18 +2,12 @@ package de.lukasherz.twittercrawler.crawler;
 
 import com.twitter.clientlib.TwitterCredentialsBearer;
 import com.twitter.clientlib.api.TwitterApi;
-import com.twitter.clientlib.model.GenericMultipleUsersLookupResponse;
 import com.twitter.clientlib.model.MultiUserLookupResponse;
-import com.twitter.clientlib.model.QuoteTweetLookupResponse;
 import com.twitter.clientlib.model.TweetSearchResponse;
 import com.twitter.clientlib.model.UsersFollowingLookupResponse;
 import de.lukasherz.twittercrawler.crawler.Request.Priority;
 import de.lukasherz.twittercrawler.crawler.requests.FollowsLookupRequest;
 import de.lukasherz.twittercrawler.crawler.requests.HashtagSearchRequest;
-import de.lukasherz.twittercrawler.crawler.requests.LikingUsersLookupRequest;
-import de.lukasherz.twittercrawler.crawler.requests.QuotesLookupRequest;
-import de.lukasherz.twittercrawler.crawler.requests.ReplyLookupRequest;
-import de.lukasherz.twittercrawler.crawler.requests.RetweetsLookupRequest;
 import de.lukasherz.twittercrawler.crawler.requests.UserLookupRequest;
 import de.lukasherz.twittercrawler.data.database.DatabaseManager;
 import java.sql.SQLException;
@@ -35,17 +29,9 @@ public class CrawlerHandler {
     private final HashSet<TwitterApi> apisBearer;
     private final RequestPriorityQueue<TweetSearchResponse> searchRecentTweetsQueue;
     private final RequestPriorityQueue<UsersFollowingLookupResponse> followingUsersQueue;
-    private final RequestPriorityQueue<QuoteTweetLookupResponse> quotedTweetsQueue;
-    private final RequestPriorityQueue<GenericMultipleUsersLookupResponse> retweetedTweetsQueue;
-    private final RequestPriorityQueue<GenericMultipleUsersLookupResponse> likedTweetsQueue;
-    private final RequestPriorityQueue<TweetSearchResponse> repliesTweetsQueue;
     private final RequestPriorityQueue<MultiUserLookupResponse> userLookupQueue;
     private QueuedTimer<TweetSearchResponse> searchRecentTweetsTimer;
     private QueuedTimer<UsersFollowingLookupResponse> followingUsersTimer;
-    private QueuedTimer<QuoteTweetLookupResponse> quotedTweetsTimer;
-    private QueuedTimer<GenericMultipleUsersLookupResponse> retweetedTweetsTimer;
-    private QueuedTimer<GenericMultipleUsersLookupResponse> likedTweetsTimer;
-    private QueuedTimer<TweetSearchResponse> repliesTweetsTimer;
     private QueuedTimer<MultiUserLookupResponse> userLookupTimer;
 
     private CrawlerHandler() {
@@ -66,18 +52,10 @@ public class CrawlerHandler {
 
         searchRecentTweetsQueue = new RequestPriorityQueue<>(apisBearer);
         followingUsersQueue = new RequestPriorityQueue<>(apisBearer);
-        quotedTweetsQueue = new RequestPriorityQueue<>(apisBearer);
-        retweetedTweetsQueue = new RequestPriorityQueue<>(apisBearer);
-        likedTweetsQueue = new RequestPriorityQueue<>(apisBearer);
-        repliesTweetsQueue = new RequestPriorityQueue<>(apisBearer);
         userLookupQueue = new RequestPriorityQueue<>(apisBearer);
 
         searchRecentTweetsTimer = new QueuedTimer<>(searchRecentTweetsQueue, "searchRecentTweetsTimer");
         followingUsersTimer = new QueuedTimer<>(followingUsersQueue, "followingUsersTimer");
-        quotedTweetsTimer = new QueuedTimer<>(quotedTweetsQueue, "quotedTweetsTimer");
-        retweetedTweetsTimer = new QueuedTimer<>(retweetedTweetsQueue, "retweetedTweetsTimer");
-        likedTweetsTimer = new QueuedTimer<>(likedTweetsQueue, "likedTweetsTimer");
-        repliesTweetsTimer = new QueuedTimer<>(repliesTweetsQueue, "repliesTweetsTimer");
         userLookupTimer = new QueuedTimer<>(userLookupQueue, "userLookupTimer");
     }
 
@@ -91,10 +69,6 @@ public class CrawlerHandler {
     public void startSchedulers() {
         searchRecentTweetsTimer.start();
         followingUsersTimer.start();
-        quotedTweetsTimer.start();
-        retweetedTweetsTimer.start();
-        likedTweetsTimer.start();
-        repliesTweetsTimer.start();
         userLookupTimer.start();
 
         new Timer().scheduleAtFixedRate(
@@ -106,28 +80,16 @@ public class CrawlerHandler {
                         + " minutes");
                     System.out.println("Following users: " + followingUsersQueue.size()
                         + " takes approximately " + (Math.ceil(followingUsersQueue.size() / 15.) * 15.) + " minutes");
-                    System.out.println("Quoted tweets: " + quotedTweetsQueue.size()
-                        + " takes approximately " + (Math.ceil(quotedTweetsQueue.size() / 75.) * 15.) + " minutes");
-                    System.out.println("Retweeted tweets: " + retweetedTweetsQueue.size()
-                        + " takes approximately " + (Math.ceil(retweetedTweetsQueue.size() / 75.) * 15.) + " minutes");
-                    System.out.println("Liked tweets: " + likedTweetsQueue.size()
-                        + " takes approximately " + (Math.ceil(likedTweetsQueue.size() / 75.) * 15.) + " minutes");
-                    System.out.println("Replies tweets: " + repliesTweetsQueue.size()
-                        + " takes approximately " + (Math.ceil(repliesTweetsQueue.size() / 450.) * 15.) + " minutes");
                     System.out.println("User lookup: " + userLookupQueue.size()
                         + " takes approximately " + (Math.ceil(userLookupQueue.size() / 300.) * 15.) + " minutes");
 
                     System.out.println("Total requests: " + (searchRecentTweetsQueue.size()
-                        + followingUsersQueue.size() + quotedTweetsQueue.size() + retweetedTweetsQueue.size()
-                        + likedTweetsQueue.size() + repliesTweetsQueue.size() + userLookupQueue.size()));
+                        + followingUsersQueue.size() + userLookupQueue.size()));
 
                     System.out.println(
                         "Total time: " + (
-                            Math.ceil((searchRecentTweetsQueue.size() + repliesTweetsQueue.size()) / 450.) * 15.
+                            Math.ceil(searchRecentTweetsQueue.size() / 450.) * 15.
                                 + Math.ceil(followingUsersQueue.size() / 15.) * 15.
-                                + Math.ceil(quotedTweetsQueue.size() / 75.) * 15.
-                                + Math.ceil(retweetedTweetsQueue.size() / 75.) * 15.
-                                + Math.ceil(likedTweetsQueue.size() / 75.) * 15.
                                 + Math.ceil(userLookupQueue.size() / 300.) * 15.) + " minutes");
                     System.out.println("\n");
                 }
@@ -145,22 +107,6 @@ public class CrawlerHandler {
             searchRecentTweetsQueue.setTimeForCurrentEntry(nextRequestAllowed);
             request.setPriority(Priority.HIGH);
             searchRecentTweetsQueue.offer((Request<TweetSearchResponse>) request);
-        } else if (request instanceof QuotesLookupRequest) {
-            quotedTweetsQueue.setTimeForCurrentEntry(nextRequestAllowed);
-            request.setPriority(Priority.HIGH);
-            quotedTweetsQueue.offer((Request<QuoteTweetLookupResponse>) request);
-        } else if (request instanceof RetweetsLookupRequest) {
-            retweetedTweetsQueue.setTimeForCurrentEntry(nextRequestAllowed);
-            request.setPriority(Priority.HIGH);
-            retweetedTweetsQueue.offer((Request<GenericMultipleUsersLookupResponse>) request);
-        } else if (request instanceof LikingUsersLookupRequest) {
-            likedTweetsQueue.setTimeForCurrentEntry(nextRequestAllowed);
-            request.setPriority(Priority.HIGH);
-            likedTweetsQueue.offer((Request<GenericMultipleUsersLookupResponse>) request);
-        } else if (request instanceof ReplyLookupRequest) {
-            repliesTweetsQueue.setTimeForCurrentEntry(nextRequestAllowed);
-            request.setPriority(Priority.HIGH);
-            repliesTweetsQueue.offer((Request<TweetSearchResponse>) request);
         } else if (request instanceof UserLookupRequest) {
             userLookupQueue.setTimeForCurrentEntry(nextRequestAllowed);
             request.setPriority(Priority.HIGH);
@@ -177,26 +123,6 @@ public class CrawlerHandler {
     public void addFollowsLookupToQuery(long userId) {
         //TODO: check if already computed
         followingUsersQueue.offer(new FollowsLookupRequest(followingUsersQueue, userId, 1000));
-    }
-
-    public void addQuotesLookupToQuery(long tweetId, int count) {
-//        quotedTweetsQueue.offer(new QuotesLookupRequest(quotedTweetsQueue, tweetId, count));
-    }
-
-    public void addRetweetsLookupToQuery(long tweetId, int count) {
-//        retweetedTweetsQueue.offer(new RetweetsLookupRequest(retweetedTweetsQueue, tweetId, count));
-    }
-
-    public void addLikingUsersLookupToQuery(long tweetId, int count) {
-//        likedTweetsQueue.offer(new LikingUsersLookupRequest(likedTweetsQueue, tweetId, count));
-    }
-
-    public void addReplyLookupToQuery(long coversationId, int count) {
-//        repliesTweetsQueue.offer(new ReplyLookupRequest(repliesTweetsQueue, coversationId, count));
-    }
-
-    public void addUsersTweetsLookupToQuery(long userId, int count) {
-        // TODO
     }
 
     public void addUserLookupToQuery(long userId) {

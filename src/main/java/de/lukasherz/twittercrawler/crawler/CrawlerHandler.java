@@ -2,7 +2,6 @@ package de.lukasherz.twittercrawler.crawler;
 
 import com.twitter.clientlib.TwitterCredentialsBearer;
 import com.twitter.clientlib.api.TwitterApi;
-import com.twitter.clientlib.model.MultiUserLookupResponse;
 import com.twitter.clientlib.model.TweetSearchResponse;
 import com.twitter.clientlib.model.UsersFollowingLookupResponse;
 import de.lukasherz.twittercrawler.TwitterCrawler;
@@ -74,6 +73,18 @@ public class CrawlerHandler {
                         "Total time: " + (
                             Math.ceil(searchRecentTweetsQueue.size() / 450.) * 15.
                                 + Math.ceil(followingUsersQueue.size() / 15.) * 15.) + " minutes");
+                    System.out.println(
+                        "Total time (worst case): " + (
+                            Math.ceil(searchRecentTweetsQueue.size() * 1100 / 450.) * 15.
+                                + Math.ceil(followingUsersQueue.size() * 10000 / 15.) * 15.) + " minutes");
+                    System.out.println(
+                        "Total time (worst case): " + (
+                            Math.ceil(searchRecentTweetsQueue.size() * 1100 / 450.) * 15.
+                                + Math.ceil(followingUsersQueue.size() * 10000 / 15.) * 15.) / 60. + " hours");
+                    System.out.println(
+                        "Total time (worst case): " + (
+                            Math.ceil(searchRecentTweetsQueue.size() * 1100 / 450.) * 15.
+                                + Math.ceil(followingUsersQueue.size() * 10000 / 15.) * 15.) / 60. / 24. + " days");
                     System.out.println("\n");
                 }
             }, 0, 10000);
@@ -100,6 +111,6 @@ public class CrawlerHandler {
 
     public void addFollowsLookupToQuery(long userId) {
         //TODO: check if already computed
-        followingUsersQueue.offer(new FollowsLookupRequest(followingUsersQueue, userId, 1000));
+        followingUsersQueue.offer(new FollowsLookupRequest(followingUsersQueue, userId, 10000));
     }
 }

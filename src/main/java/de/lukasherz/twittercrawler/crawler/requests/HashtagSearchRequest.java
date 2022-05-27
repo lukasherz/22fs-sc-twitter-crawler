@@ -146,12 +146,14 @@ public class HashtagSearchRequest extends Request<TweetSearchResponse> {
 
     @Override
     protected TweetSearchResponse executeImpl() {
-        log.info("Executing search for query: " + getQuery());
+        log.info("Executing search for query: \"" + getQuery() + "\" with " + getCountForThisRun() + " tweets and " + getCountLeft() + " tweets left");
+
         try {
             TweetSearchResponse tsr = queue.getNextApi().tweets().tweetsRecentSearch(
                 getQuery(),
                 null,
-                OffsetDateTime.now().minus(1, ChronoUnit.DAYS),
+                //OffsetDateTime.now().minus(1, ChronoUnit.DAYS),
+                null,
                 null,
                 null,
                 getCountForThisRun(),

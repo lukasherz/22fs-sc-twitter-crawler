@@ -46,6 +46,8 @@ public class FollowsLookupRequest extends Request<UsersFollowingLookupResponse> 
     }
 
     @Override protected UsersFollowingLookupResponse executeImpl() {
+        log.info("Executing FollowsLookupRequest for user: " + userId + " with token: " + token + " and count: " + getCountForThisRun() + " and " + getCountLeft() + " left");
+
         try {
             UsersFollowingLookupResponse uflr = queue.getNextApi().users().usersIdFollowing(
                 String.valueOf(getUserId()),

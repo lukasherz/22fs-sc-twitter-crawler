@@ -79,6 +79,7 @@ public class DatabaseManager {
         config.setPassword(properties.getProperty("jdbc.password"));
         config.addDataSourceProperty("useSSL", properties.getProperty("jdbc.useSSL"));
         config.addDataSourceProperty("serverTimezone", properties.getProperty("jdbc.serverTimezone"));
+        config.addDataSourceProperty("allowPublicKeyRetrieval", properties.getProperty("jdbc.allowPublicKeyRetrieval"));
         config.setDriverClassName("com.mysql.cj.jdbc.Driver");
 
         return config;

@@ -21,16 +21,16 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
-import lombok.extern.java.Log;
+import lombok.extern.flogger.Flogger;
 
-@Log
+@Flogger
 public class DatabaseManager {
 
     private static DatabaseManager instance;
     private HikariDataSource hikariDataSource;
 
     private DatabaseManager() {
-        log.info("DatabaseManager starting...");
+        log.atInfo().log("DatabaseManager starting...");
 
         hikariDataSource = new HikariDataSource(createHikariConfig());
 
@@ -38,11 +38,10 @@ public class DatabaseManager {
         try {
             initDatabase();
         } catch (SQLException e) {
-            log.severe("could not init database");
-            e.printStackTrace();
+            log.atSevere().withCause(e).log("could not init database");
         }
 
-        log.info("DatabaseManager started");
+        log.atInfo().log("DatabaseManager started");
     }
 
     public static DatabaseManager getInstance() {
@@ -61,16 +60,16 @@ public class DatabaseManager {
             try {
                 properties.load(is);
             } catch (IOException e) {
-                e.printStackTrace();
+                log.atSevere().withCause(e).log("could not load config.properties");
             } finally {
                 try {
                     is.close();
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    log.atWarning().withCause(e).log("could not close config.properties");
                 }
             }
         } else {
-            log.severe("Could not load config.properties");
+            log.atSevere().log("Could not load config.properties");
         }
 
         HikariConfig config = new HikariConfig();

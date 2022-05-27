@@ -18,16 +18,14 @@ import de.lukasherz.twittercrawler.data.entities.tweets.contextannotation.Contex
 import de.lukasherz.twittercrawler.data.entities.users.UserDbEntry;
 import java.sql.SQLException;
 import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.Collection;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
-import lombok.extern.java.Log;
+import lombok.extern.flogger.Flogger;
 import org.checkerframework.checker.index.qual.Positive;
 
-@Log
+@Flogger
 public class HashtagSearchRequest extends Request<TweetSearchResponse> {
 
     private final RequestPriorityQueue<TweetSearchResponse> queue;
@@ -140,13 +138,14 @@ public class HashtagSearchRequest extends Request<TweetSearchResponse> {
 
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.atSevere().withCause(e).log("Failed to insert HashtagTweetsResponse to database");
         }
     }
 
     @Override
     protected TweetSearchResponse executeImpl() {
-        log.info("Executing search for query: \"" + getQuery() + "\" with " + getCountForThisRun() + " tweets and " + getCountLeft() + " tweets left");
+        log.atInfo().log("Executing search for query: \"%s\" with %d tweets and %d tweets left",
+            getQuery(), getCountForThisRun(), getCountLeft());
 
         try {
             TweetSearchResponse tsr = queue.getNextApi().tweets().tweetsRecentSearch(
@@ -225,9 +224,7 @@ public class HashtagSearchRequest extends Request<TweetSearchResponse> {
                     Instant.ofEpochSecond(Long.parseLong(e.getResponseHeaders().get("x-rate-limit-reset").get(0)))
                 );
             } else {
-                log.severe("Could not get rate limit information from response headers. " + this.getClass()
-                    .getSimpleName());
-                e.printStackTrace();
+                log.atSevere().withCause(e).log("Could not get rate limit information from response headers.");
             }
         }
 

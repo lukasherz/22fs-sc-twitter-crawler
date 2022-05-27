@@ -5,10 +5,9 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Timer;
 import java.util.TimerTask;
-import lombok.extern.java.Log;
 
-@Log
 public class QueuedTimer<T> {
+
     private final RequestPriorityQueue<T> queue;
     private final String name;
     private Timer timer;

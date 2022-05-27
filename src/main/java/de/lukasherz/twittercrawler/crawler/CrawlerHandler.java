@@ -14,10 +14,10 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Timer;
 import java.util.TimerTask;
-import lombok.extern.java.Log;
+import lombok.extern.flogger.Flogger;
 import org.apache.commons.lang3.NotImplementedException;
 
-@Log
+@Flogger
 public class CrawlerHandler {
 
     private static CrawlerHandler instance;
@@ -76,22 +76,22 @@ public class CrawlerHandler {
                     System.out.println(
                         "Total time (worst case): " + (
                             Math.ceil(searchRecentTweetsQueue.size() * 1100 / 450.) * 15.
-                                + Math.ceil(followingUsersQueue.size() * 10000 / 15.) * 15.) + " minutes");
+                                + Math.ceil(followingUsersQueue.size() * 10 / 15.) * 15.) + " minutes");
                     System.out.println(
                         "Total time (worst case): " + (
                             Math.ceil(searchRecentTweetsQueue.size() * 1100 / 450.) * 15.
-                                + Math.ceil(followingUsersQueue.size() * 10000 / 15.) * 15.) / 60. + " hours");
+                                + Math.ceil(followingUsersQueue.size() * 10 / 15.) * 15.) / 60. + " hours");
                     System.out.println(
                         "Total time (worst case): " + (
                             Math.ceil(searchRecentTweetsQueue.size() * 1100 / 450.) * 15.
-                                + Math.ceil(followingUsersQueue.size() * 10000 / 15.) * 15.) / 60. / 24. + " days");
+                                + Math.ceil(followingUsersQueue.size() * 10 / 15.) * 15.) / 60. / 24. + " days");
                     System.out.println("\n");
                 }
             }, 0, 10000);
     }
 
     public void handleRateLimit(Request<?> request, Instant nextRequestAllowed) {
-        log.info("Rate limit reached for " + request.getClass().getSimpleName() + ": " + nextRequestAllowed);
+        log.atInfo().log("Rate limit reached for %s: %s", request.getClass().getSimpleName(), nextRequestAllowed);
         request.setPriority(Priority.HIGHEST);
 
         if (request instanceof FollowsLookupRequest) {

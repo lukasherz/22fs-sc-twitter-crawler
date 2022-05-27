@@ -1,5 +1,6 @@
 package de.lukasherz.twittercrawler.crawler.requests;
 
+import com.google.common.flogger.LazyArgs;
 import com.twitter.clientlib.ApiException;
 import com.twitter.clientlib.model.User;
 import com.twitter.clientlib.model.UsersFollowingLookupResponse;
@@ -11,9 +12,9 @@ import de.lukasherz.twittercrawler.data.entities.users.UserDbEntry;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.stream.Collectors;
-import lombok.extern.java.Log;
+import lombok.extern.flogger.Flogger;
 
-@Log
+@Flogger
 public class FollowsLookupRequest extends Request<UsersFollowingLookupResponse> {
 
     private final RequestPriorityQueue<UsersFollowingLookupResponse> queue;
@@ -46,7 +47,11 @@ public class FollowsLookupRequest extends Request<UsersFollowingLookupResponse> 
     }
 
     @Override protected UsersFollowingLookupResponse executeImpl() {
-        log.info("Executing FollowsLookupRequest for user: " + userId + " with token: " + token + " and count: " + getCountForThisRun() + " and " + getCountLeft() + " left");
+        log.atFine().log("Executing FollowsLookupRequest for user: %s with token: %s and count: %d and %d left",
+            userId,
+            token,
+            LazyArgs.lazy(this::getCountForThisRun),
+            LazyArgs.lazy(this::getCountForThisRun));
 
         try {
             UsersFollowingLookupResponse uflr = queue.getNextApi().users().usersIdFollowing(
@@ -77,9 +82,7 @@ public class FollowsLookupRequest extends Request<UsersFollowingLookupResponse> 
                     Instant.ofEpochSecond(Long.parseLong(e.getResponseHeaders().get("x-rate-limit-reset").get(0)))
                 );
             } else {
-                log.severe(
-                    "Could not get rate limit information from response headers. " + this.getClass().getSimpleName());
-                e.printStackTrace();
+                log.atSevere().withCause(e).log("Could not get rate limit information from response headers.");
             }
         }
 
@@ -100,7 +103,7 @@ public class FollowsLookupRequest extends Request<UsersFollowingLookupResponse> 
                         .map(Long::parseLong)
                         .collect(Collectors.toList()));
             } catch (SQLException e) {
-                e.printStackTrace();
+                log.atSevere().log("Could not insert users or their followings into database.");
             }
         }
     }

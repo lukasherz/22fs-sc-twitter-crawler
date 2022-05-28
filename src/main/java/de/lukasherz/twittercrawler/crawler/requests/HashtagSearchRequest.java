@@ -77,10 +77,15 @@ public class HashtagSearchRequest extends Request<TweetSearchResponse> {
             if (tsr.getIncludes() != null && tsr.getIncludes().getUsers() != null) {
                 dm.insertUsers(tsr.getIncludes().getUsers().stream().map(UserDbEntry::parse).toList());
 
-                tsr.getIncludes().getUsers().stream()
-                    .map(User::getId)
-                    .map(Long::parseLong)
-                    .forEach(ch::addFollowsLookupToQuery);
+                if (tsr.getData() != null) {
+                    tsr.getIncludes().getUsers().stream()
+                        .map(User::getId)
+                        .filter(id -> tsr.getData().stream()
+                            .filter(t -> t.getAuthorId() != null)
+                            .anyMatch(t -> t.getAuthorId().equalsIgnoreCase(id)))
+                        .map(Long::parseLong)
+                        .forEach(ch::addFollowsLookupToQuery);
+                }
             }
 
             if (tsr.getData() != null) {

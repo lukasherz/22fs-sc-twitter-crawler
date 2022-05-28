@@ -3,7 +3,9 @@ package de.lukasherz.twittercrawler;
 import com.google.common.collect.ImmutableList;
 import de.lukasherz.twittercrawler.crawler.CrawlerHandler;
 import java.util.Arrays;
+import lombok.extern.flogger.Flogger;
 
+@Flogger
 public class TwitterCrawler {
 
     private static final ImmutableList<String> TOKENS = ImmutableList.of(
@@ -31,6 +33,7 @@ public class TwitterCrawler {
         CrawlerHandler crawlerHandler = CrawlerHandler.getInstance();
 
         for (String arg : Arrays.stream(args).skip(2).toList()) {
+            log.atInfo().log("Adding hashtag: %s", arg);
             crawlerHandler.addHashtagSearchToQuery(arg, Integer.parseInt(args[1]));
         }
 

@@ -80,6 +80,7 @@ public class DatabaseManager {
         config.addDataSourceProperty("serverTimezone", properties.getProperty("jdbc.serverTimezone"));
         config.addDataSourceProperty("allowPublicKeyRetrieval", properties.getProperty("jdbc.allowPublicKeyRetrieval"));
         config.setDriverClassName("com.mysql.cj.jdbc.Driver");
+        config.setMaximumPoolSize(5);
 
         return config;
     }

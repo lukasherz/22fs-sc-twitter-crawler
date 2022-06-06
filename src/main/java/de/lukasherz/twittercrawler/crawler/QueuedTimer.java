@@ -16,6 +16,7 @@ public class QueuedTimer<T> {
     public QueuedTimer(RequestPriorityQueue<T> queue, String name) {
         this.queue = queue;
         this.name = name;
+        this.timer = new Timer();
     }
 
     private TimerTask getNewTimer() {
@@ -58,7 +59,6 @@ public class QueuedTimer<T> {
             stop();
         }
 
-        this.timer = new Timer(name);
         this.timer.schedule(getNewTimer(), Date.from(time));
     }
 }
